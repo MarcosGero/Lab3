@@ -3,4 +3,6 @@ project(Lab3 C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(Lab3 lab3tic.c)
+add_executable(Lab3 lab3tic.c
+        lab3tic.c
+        xhamming.h)
