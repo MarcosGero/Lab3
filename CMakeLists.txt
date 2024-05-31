@@ -5,4 +5,8 @@ set(CMAKE_C_STANDARD 11)
 
 add_executable(Lab3 lab3tic.c
         lab3tic.c
-        xhamming.h)
+        xhamming.h
+        hamming.h
+        huffmanops.h
+        minheap.h
+        utilidades.h)

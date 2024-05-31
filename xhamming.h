@@ -74,16 +74,16 @@ void calculate_block_parity(char *block, int block_size) {
 }
 
 // Función para proteger el archivo usando el código de Hamming
-int protect_file(const char *input_filename, int block_size, const char *output_filename) {
+int protect_file(const char *input_filename, int data_size, const char *output_filename) {
     size_t size;
     char *data = load_file(input_filename, &size); // Carga los datos a codificar
     if (!data) return 1;
 
     int total_bits = size * 8;
-    int k = get_parity_bit_count(block_size);
-    int n = block_size;
-    block_size = n + k + 1;
-    printf("n, k: (%i, %i)\n",n,k);
+    int k = get_parity_bit_count(data_size);
+    int n = data_size;
+    int block_size = n + k + 1;
+    printf("n, k: (%i, %i), blocksize: \n",n,k,block);
 
     // Preparar archivo de Salida
     FILE *out = fopen(output_filename, "wb");
@@ -155,7 +155,7 @@ int getExtensionIndex(char* input_filename){
 
 // Dado el nombre del archivo, devuelve el tamaño del bloque de hamming
 
-// Dado el tipo de bloque, retorna el tamaño del bloque
+// Dado el tipo de bloque, retorna el tamaño de los datos
 int getBlockSizeByIndex(int n){
     switch(n){
         case 1:
