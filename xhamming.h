@@ -213,7 +213,7 @@ int getIndexForExtension(int n){
 }
 
 // Introduce errores aleatorios en el archivo
-int introduce_errors(const char *input_filename, const char *output_filename) {
+int introduce_errors(char *input_filename, char *output_filename) {
     size_t size;
     char *data = load_file(input_filename, &size);
     if (!data) return 1;
@@ -224,7 +224,7 @@ int introduce_errors(const char *input_filename, const char *output_filename) {
     int n = data_size;
     int block_size = n + k + 1;
 
-    printf("size in bytes: %d, block_size: %d\n",size,block_size);
+    printf("size in bytes: %llu, block_size: %d\n",size,block_size);
 
     // Calcular extension archivo de salida
     char indexString[5];
@@ -260,7 +260,7 @@ int introduce_errors(const char *input_filename, const char *output_filename) {
 }
 
 
-int correct_error(const char *data,  int block_size, size_t size){
+int correct_error(char *data,  int block_size, size_t size){
 
 
         int block_bytes = (block_size-1 + 7) / 8;
@@ -268,14 +268,14 @@ int correct_error(const char *data,  int block_size, size_t size){
         for (int i = 0; i < size; i += block_bytes) {
             int index = 0;
             int parity = 0;
-            for (int j = 0; j < block_size; j++) {
+            for (int j = 0; j < block_size-1; j++) {
 
                 if(get_bit(data,i*8+j)){
                     index ^= (i*8+j)+1;
                     parity ^= 1;
                 }
             }
-
+            if(get_bit(data,i*8+block_size-1))  parity ^= 1;
             if(index){
                 if (parity % 2 != 0) {
                     // Paridad impar, un solo error
@@ -368,7 +368,7 @@ int decode_file(const char *input_filename, const char *output_filename, int blo
 // Introducir dos errores
 
 // Introduce errores aleatorios en el archivo
-int introduce_two_errors(const char *input_filename, const char *output_filename) {
+int introduce_two_errors(char *input_filename, char *output_filename) {
     size_t size;
     char *data = load_file(input_filename, &size);
     if (!data) return 1;
