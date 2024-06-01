@@ -268,14 +268,15 @@ int correct_error(char *data,  int block_size, size_t size){
         for (int i = 0; i < size; i += block_bytes) {
             int index = 0;
             int parity = 0;
+            int pos = 0;
             for (int j = 0; j < block_size-1; j++) {
-
-                if(get_bit(data,i*8+j)){
-                    index ^= (i*8+j)+1;
+                pos = i*8+j;
+                if(get_bit(data,pos)){
+                    index ^= pos+1;
                     parity ^= 1;
                 }
             }
-            if(get_bit(data,i*8+block_size-1))  parity ^= 1;
+            if(get_bit(data,pos+1))  parity ^= 1;
             if(index){
                 if (parity % 2 != 0) {
                     // Paridad impar, un solo error
