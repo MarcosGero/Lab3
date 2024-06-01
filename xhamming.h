@@ -6,7 +6,18 @@
 
 
 #define MAX_FILENAME 256
+void char_to_binary(char c, char *output) {
+    for (int i = 7; i >= 0; i--) {
+        output[7 - i] = ((c >> i) & 1) ? '1' : '0';
+    }
+    output[8] = '\0';
+}
 
+void inspect_pointer(char *ptr) {
+    char binary[9];
+    char_to_binary(*ptr, binary);
+    printf("Value at pointer: %s\n", binary);
+}
 // Devuelve la cantidad de bit de control que deberia tener un bloque de hamming
 int get_parity_bit_count(int n) {
     int k = 0;
@@ -117,6 +128,7 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
 
 
         int bitPosACopiar = 0;
+
         for(int j = 0; j < n+k; j++){ // recorre all the bloque
 
             if (bitPosACopiar>size*8) break;
@@ -124,12 +136,17 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
 
             if (!isPowerOfTwo(j+1)){
                 set_bit(block,j,get_bit(data,i+bitPosACopiar));
+                char *chartest = &data[i];
+                inspect_pointer(chartest);
                 bitPosACopiar++;
             }
 
         }
+        inspect_pointer(block);
         calculate_parity_bits(block, block_size, k);
+        inspect_pointer(block);
         calculate_block_parity(block,block_size);
+        inspect_pointer(block);
 
         fwrite(block, 1, block_bytes, out);  // Escribir bloque protegido
         printf("<Procesado bloque %d>\n",i/n);
@@ -140,6 +157,7 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
     free(data);
     return 0;
 }
+
 
 // Dado el nombre de un archivo, devuelve en entero el tipo de bloque de hamming que es
 int getExtensionIndex(char* input_filename){
