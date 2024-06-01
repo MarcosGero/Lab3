@@ -219,7 +219,11 @@ int introduce_errors(const char *input_filename, const char *output_filename) {
     if (!data) return 1;
 
     // Calcula el tamaño del bloque en base a la extension
-    int block_size = getBlockSizeByExtension(input_filename);
+    int data_size = getBlockSizeByExtension(input_filename);
+    int k = get_parity_bit_count(data_size);
+    int n = data_size;
+    int block_size = n + k + 1;
+
     printf("size in bytes: %d, block_size: %d\n",size,block_size);
 
     // Calcular extension archivo de salida
@@ -237,12 +241,16 @@ int introduce_errors(const char *input_filename, const char *output_filename) {
     // Introducir un error aleatorio por bloque
     srand(time(NULL)); // Inicialización del generador de números aleatorios
     for(int i = 0; i < size*8; i+=block_size){
+        char* chartest= &data[i];
+        inspect_pointer(chartest);
         int errorPosition = rand() % block_size;
 //        printf("%d %d\n",errorPosition,block_size);
 //        printf("Index iter: %d\n",i);
 //        printBlock(data,block_size);
         set_bit(data,i+errorPosition,!get_bit(data,i+errorPosition));
 //        printBlock(data,block_size);
+        chartest= &data[i];
+        inspect_pointer(chartest);
     }
 
     fwrite(data, 1, size, out);
