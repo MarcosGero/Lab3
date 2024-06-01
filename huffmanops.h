@@ -12,7 +12,7 @@ int calculateFrequencyTable(char* texto, char* letras, int* frecuencias){
     memset(frecuencias,0,128*sizeof(int));
     memset(letras,0,128);
 
-    printf("\ntext: %s; size: %d\n",texto,size);
+    /*printf("\ntext: %s; size: %d\n",texto,size);*/
 
     // Escanea todo el archivo y va contando
     for(int i = 0; i < size; i++){
@@ -92,7 +92,7 @@ MinHeapNode* HuffmanCodes(char data[], int freq[], int size){
     // the Huffman tree built above
     int arr[MAX_TREE_HT], top = 0;
 
-    printCodes(root, arr, top);
+    /*printCodes(root, arr, top);*/
 
     return root;
 }

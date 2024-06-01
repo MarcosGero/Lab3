@@ -65,10 +65,10 @@ int comprimir_huffman(char* input_filename,char* output_filename){
     createHuffmanTable(huffmanTreeRoot,arr,top,&compressionTable);
 
     //Ver tabla de compresion
-    printf("\nTABLA COMPRESION: \n");
-    for(int i = 0; i < 128; i++){
-        printf("%c: %s\n",i,compressionTable[i]);
-    }
+    //printf("\nTABLA COMPRESION: \n");
+    //for(int i = 0; i < 128; i++){
+    //    printf("%c: %s\n",i,compressionTable[i]);
+    //}
 
     // Reservar espacio de mas para el mensaje comprimido
     char* compressedMsj = malloc(sizeof(char)*size*MAX_TREE_HT);
@@ -77,10 +77,10 @@ int comprimir_huffman(char* input_filename,char* output_filename){
     for(int i = 0; i < size; i++){
         strcat(compressedMsj,compressionTable[data[i]]);
     }
-    printf("Se armo el arbol de huffman\n");
+    /*printf("Se armo el arbol de huffman\n");
     printHuffmanTree(huffmanTreeRoot);
 
-    printf("Mensaje comprimido: %s\n",compressedMsj);
+    printf("Mensaje comprimido: %s\n",compressedMsj);*/
 
 
     huffmanData inorder[128];
@@ -88,9 +88,9 @@ int comprimir_huffman(char* input_filename,char* output_filename){
 
     createInorderTree(huffmanTreeRoot,&inorder,&tamano);
 
-    printf("Inorder creado \n");
+    /*printf("Inorder creado \n");
 
-    printHuffmanData(inorder,tamano);
+    printHuffmanData(inorder,tamano);*/
 
     fwrite(&tamano, sizeof(int), 1, out);
     fwrite(inorder,sizeof(huffmanData),tamano,out); // escribe el array en un archivo
@@ -141,13 +141,13 @@ int descomprimir_huffman(char* input_filename, char* output_filename) {
     fread(inorder, sizeof(huffmanData), tamano, in); // Leer el array inorder
     printf("Inorder leido\n");
 
-    printHuffmanData(inorder,tamano);
+    /*printHuffmanData(inorder,tamano);*/
     // Reconstruir el árbol de Huffman a partir del array inorder
 
     MinHeapNode* huffmanTreeRoot = buildTreeFromInorder(inorder, 0, tamano-1);
 
-    printf("Se armo el arbol de huffman\n");
-    printHuffmanTree(huffmanTreeRoot);
+    /*printf("Se armo el arbol de huffman\n");
+    printHuffmanTree(huffmanTreeRoot);*/
     int validBitsInLastByte;
     fread(&validBitsInLastByte, sizeof(int), 1, in);
 
@@ -184,7 +184,7 @@ int descomprimir_huffman(char* input_filename, char* output_filename) {
     }
     //printf(decompressedMessage);
     //printf("\n");
-    printf("%d\n",sizeof(decompressedMessage));
+    /*printf("%d\n",sizeof(decompressedMessage));*/
     fwrite(decompressedMessage, sizeof(char), strlen(decompressedMessage), out);
     fclose(out);
 
