@@ -4,6 +4,7 @@
 #include <math.h>
 #include <time.h>
 
+
 #define MAX_FILENAME 256
 
 // Devuelve la cantidad de bit de control que deberia tener un bloque de hamming
@@ -46,6 +47,7 @@ int find_and_correct_errors(char *block, int size) {
 }
 
 // Calcula los bits de paridad y configura en el array 'data'
+//                                        8       3
 void calculate_parity_bits(char *data, int n, int k) {
     for (int p = 0; p < k; p++) {
         int parity = 0;
@@ -59,17 +61,29 @@ void calculate_parity_bits(char *data, int n, int k) {
     }
 }
 
+void calculate_block_parity(char *block, int block_size) {
+    int parity = 0;
+
+    // Calcular la paridad XOR de todos los bits en el bloque
+    for (int i = 0; i < block_size - 1; i++) {
+        parity ^= get_bit(block, i);
+    }
+
+    // Establecer el bit de paridad al final del bloque
+    set_bit(block, block_size - 1, parity);
+}
+
 // Función para proteger el archivo usando el código de Hamming
-int protect_file(const char *input_filename, int block_size, const char *output_filename) {
+int protect_file(const char *input_filename, int data_size, const char *output_filename) {
     size_t size;
     char *data = load_file(input_filename, &size); // Carga los datos a codificar
     if (!data) return 1;
 
     int total_bits = size * 8;
-    int k = get_parity_bit_count(block_size);
-    int n = block_size;
-    block_size = n + k;
-    printf("n, k: (%i, %i)\n",n,k);
+    int k = get_parity_bit_count(data_size);
+    int n = data_size;
+    int block_size = n + k + 1;
+    printf("n, k: (%i, %i), blocksize: %i \n",n,k,block_size);
 
     // Preparar archivo de Salida
     FILE *out = fopen(output_filename, "wb");
@@ -93,45 +107,35 @@ int protect_file(const char *input_filename, int block_size, const char *output_
 
 
     // Aplicar Hamming a cada bloque
-    for (int i = 0; i < total_bits; i += n) { // Esto itera por cada cantidad de bits de info tenga el bloque de datos sin codificar, en cada iteracion se acomodan los bits de info en un nuevo bloque (de modo que los bits de control queden en cero), y se calculan los bits de hamming
+    // Esto itera por cada cantidad
+    // de bits de info tenga el bloque de datos
+    // sin codificar, en cada iteracion
+    // se acomodan los bits de info en un nuevo bloque
+    // (de modo que los bits de control queden en cero), y se calculan los bits de hamming
+    for (int i = 0; i < total_bits; i += n) {
         memset(block, 0, block_bytes); // Limpiar el bloque antes de usarlo
 
-//        printBlock(data,size);
-//        printf("Antes copiado\n");
-//        printBlock(block,block_bytes);
 
         int bitPosACopiar = 0;
-        for(int j = 0; j < n+k; j++){ // recorre todo el bloque
-            // en i+j estaria el bit que nos interesa copiar en la nueva posicion
-            // solo las posiciones de j que no sean potencias de dos se copiaran
 
-//            printf("(i: %d,j: %d)\n",i,j);
+        for(int j = 0; j < n+k; j++){ // recorre all the bloque
 
-
-            // Condicion parada en caso de que el bloque sea mas grande que el archivo a copiar (para evitar datos basura)
             if (bitPosACopiar>size*8) break;
-//            printf("%d, exceso del archivo %d\n",bitPosACopiar,size*8);
-
 
 
             if (!isPowerOfTwo(j+1)){
-//                printf("no es potencia\n");
-//                printf("Bit a copiar: %d en posicion: %d\n",get_bit(data,i+bitPosACopiar),j);
                 set_bit(block,j,get_bit(data,i+bitPosACopiar));
+                char *chartest = &data[i];
+              //  inspect_pointer(chartest);
                 bitPosACopiar++;
             }
 
-//            printf("%d\n",bitPosACopiar);
         }
-//        printf("Despues copiado\n");
-//        printBlock(block,block_bytes);
-
-////        int limit = fmin(n, total_bits - i);
-////        memset(block, 0, block_bytes); // Limpiar el bloque antes de usarlo
-
+        //inspect_pointer(block);
         calculate_parity_bits(block, block_size, k);
-//        printf("Despues de aplicar Hamming\n");
-//        printBlock(block,block_bytes);
+        //inspect_pointer(block);
+        calculate_block_parity(block,block_size);
+        //inspect_pointer(block);
 
         fwrite(block, 1, block_bytes, out);  // Escribir bloque protegido
         printf("<Procesado bloque %d>\n",i/n);
@@ -142,6 +146,7 @@ int protect_file(const char *input_filename, int block_size, const char *output_
     free(data);
     return 0;
 }
+
 
 // Dado el nombre de un archivo, devuelve en entero el tipo de bloque de hamming que es
 int getExtensionIndex(char* input_filename){
@@ -162,7 +167,7 @@ int getExtensionIndex(char* input_filename){
 
 // Dado el nombre del archivo, devuelve el tamaño del bloque de hamming
 
-// Dado el tipo de bloque, retorna el tamaño del bloque
+// Dado el tipo de bloque, retorna el tamaño de los datos
 int getBlockSizeByIndex(int n){
     switch(n){
         case 1:
@@ -197,18 +202,22 @@ int getIndexForExtension(int n){
 }
 
 // Introduce errores aleatorios en el archivo
-int introduce_errors(const char *input_filename, const char *output_filename) {
+int introduce_errors(char *input_filename, char *output_filename) {
     size_t size;
     char *data = load_file(input_filename, &size);
     if (!data) return 1;
 
     // Calcula el tamaño del bloque en base a la extension
-    int block_size = getBlockSizeByExtension(input_filename);
-    printf("size in bytes: %d, block_size: %d\n",size,block_size);
+    int data_size = getBlockSizeByExtension(input_filename);
+    int k = get_parity_bit_count(data_size);
+    int n = data_size;
+    int block_size = n + k + 1;
+
+    printf("size in bytes: %llu, block_size: %d\n",size,block_size);
 
     // Calcular extension archivo de salida
     char indexString[5];
-    sprintf(indexString, "%d", getIndexForExtension(block_size));
+    sprintf(indexString, "%d", getIndexForExtension(data_size));
     strcat(output_filename,indexString);
 
     FILE *out = fopen(output_filename, "wb");
@@ -227,6 +236,8 @@ int introduce_errors(const char *input_filename, const char *output_filename) {
 //        printBlock(data,block_size);
         set_bit(data,i+errorPosition,!get_bit(data,i+errorPosition));
 //        printBlock(data,block_size);
+
+
     }
 
     fwrite(data, 1, size, out);
@@ -236,43 +247,53 @@ int introduce_errors(const char *input_filename, const char *output_filename) {
 }
 
 
-int correct_error(const char *data,  int block_size, size_t size){
+int correct_error(char *data,  int block_size, size_t size){
 
 
-        int block_bytes = (block_size + 7) / 8;
+        int block_bytes = (block_size-1 + 7) / 8;
 
         for (int i = 0; i < size; i += block_bytes) {
+            if(i == 3) {
+                printf("a");
+            }
             int index = 0;
-            for (int j = 0; j < block_size; j++) {
-
-                if(get_bit(data,i*8+j)){
-                    index ^= (i*8+j)+1;
+            int parity = 0;
+            int pos = 0;
+            for (int j = 0; j < block_size-1; j++) {
+                pos = i*8+j;
+                if(get_bit(data,pos)){
+                    index ^= j+1;
+                    parity ^= 1;
                 }
             }
+            if(get_bit(data,pos+1))  parity ^= 1;
             if(index){
-                index -= 1;
-                printf("Error encontrado, corrigiendo...\n");
-                if(get_bit(data,index))
-                    set_bit(data,index,0);
-                else
-                    set_bit(data,index,1);
+                if (parity) {
+                    // Paridad impar, un solo error
+                    index -= 1;
+                    printf("Error encontrado,corrigiendo...\n");
+                    set_bit(data, i*8 + index, !get_bit(data, i*8 + index));
+                }else {
+                    printf("Se encontraron dos errores en el bloque a partir de la posición %d\n", i);
+                    return 1; // Retornar indicando que hubo un error que no se pudo corregir
+                }
             }else{
-                printf("No se encontraron errores c:\n");
+                printf("%d No se encontraron errores c:\n",i);
             }
         }
-
+        return 0;
 
 }
 
 // Función para decodificar el archivo, opcionalmente corrigiendo errores
-int decode_file(const char *input_filename, const char *output_filename, int data_size, int correct_errors) {
+int decode_file(const char *input_filename, const char *output_filename, int block_size, int correct_errors) {
     size_t size;
     char *data = load_file(input_filename, &size);
     if (!data) return 1;
 
-    int parity_bits = get_parity_bit_count(data_size); // nro bits de control
-    int data_bits = data_size; // nro bits de info
-    int block_size = data_bits + parity_bits;
+    int parity_bits = get_parity_bit_count(block_size); // nro bits de control
+    int data_bits = block_size; // nro bits de info
+    block_size = data_bits + parity_bits+1;
     int data_bytes = data_bits/8 + (data_bits % 8 != 0); // tecnica de redondeo hacia arriba
 
     int block_bytes = (block_size + 7) / 8;
@@ -302,15 +323,8 @@ int decode_file(const char *input_filename, const char *output_filename, int dat
         correct_error(data,block_size,size);
     }
 
-
-
     int output_index = 0;
     for (int i = 0; i < size; i += block_bytes) {
-//        printBlock(data,size);
-//        printf("==========\n");
-//        printBlock(output_data,size);
-//        printf("==========\n");
-
         char stop = 'a';
         for (int j = 0; j < block_size; j++) {
 
@@ -332,13 +346,7 @@ int decode_file(const char *input_filename, const char *output_filename, int dat
 
 
         }
-
-//        printBlock(output_data,size);
-//        printf("<FIN ITERACION: %d>\n",i/block_size);
     }
-
-
-
 
     // Escribir los datos decodificados al archivo, considerando los bits efectivamente utilizados
     fwrite(output_data, 1, output_index / 8, out); // Write the actual bytes used
@@ -351,18 +359,22 @@ int decode_file(const char *input_filename, const char *output_filename, int dat
 // Introducir dos errores
 
 // Introduce errores aleatorios en el archivo
-int introduce_two_errors(const char *input_filename, const char *output_filename) {
+int introduce_two_errors(char *input_filename, char *output_filename) {
     size_t size;
     char *data = load_file(input_filename, &size);
     if (!data) return 1;
 
     // Calcula el tamaño del bloque en base a la extension
-    int block_size = getBlockSizeByExtension(input_filename);
+    int data_size = getBlockSizeByExtension(input_filename);
+    int k = get_parity_bit_count(data_size);
+    int n = data_size;
+    int block_size = n + k + 1;
+
     printf("size in bytes: %d, block_size: %d\n",size,block_size);
 
     // Calcular extension archivo de salida
     char indexString[5];
-    sprintf(indexString, "%d", getIndexForExtension(block_size));
+    sprintf(indexString, "%d", getIndexForExtension(data_size));
     strcat(output_filename,indexString);
 
     FILE *out = fopen(output_filename, "wb");
@@ -398,3 +410,15 @@ int introduce_two_errors(const char *input_filename, const char *output_filename
     free(data);
     return 0;
 }
+//void char_to_binary(char c, char *output) {
+//    for (int i = 7; i >= 0; i--) {
+//        output[7 - i] = ((c >> i) & 1) ? '1' : '0';
+//    }
+//    output[8] = '\0';
+//}
+//
+//void inspect_pointer(char *ptr) {
+//    char binary[9];
+//    char_to_binary(*ptr, binary);
+//    printf("Value at pointer: %s\n", binary);
+//}

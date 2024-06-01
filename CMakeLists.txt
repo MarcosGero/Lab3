@@ -3,12 +3,10 @@ project(Lab3 C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(Lab3
+add_executable(Lab3 lab3tic.c
         lab3tic.c
-        huffmanops.h
-        huffman.h
+        xhamming.h
         hamming.h
+        huffmanops.h
         minheap.h
-        utilidades.h
-        lab3tic.c
-        lab3tic.c)
+        utilidades.h)

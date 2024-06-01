@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "huffman.h"
-#include "hamming.h"
+#include "xhamming.h"
 
 
 #define MAX_FILENAME 260
