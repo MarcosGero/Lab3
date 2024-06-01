@@ -4,7 +4,6 @@
 #include <math.h>
 #include <time.h>
 
-#include "utilidades.h"
 
 #define MAX_FILENAME 256
 
@@ -48,6 +47,7 @@ int find_and_correct_errors(char *block, int size) {
 }
 
 // Calcula los bits de paridad y configura en el array 'data'
+//                                        8       3
 void calculate_parity_bits(char *data, int n, int k) {
     for (int p = 0; p < k; p++) {
         int parity = 0;
@@ -83,7 +83,7 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
     int k = get_parity_bit_count(data_size);
     int n = data_size;
     int block_size = n + k + 1;
-    printf("n, k: (%i, %i), blocksize: \n",n,k,block);
+    printf("n, k: (%i, %i), blocksize: %i \n",n,k,block_size);
 
     // Preparar archivo de Salida
     FILE *out = fopen(output_filename, "wb");
@@ -107,7 +107,12 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
 
 
     // Aplicar Hamming a cada bloque
-    for (int i = 0; i < total_bits; i += n) { // Esto itera por cada cantidad de bits de info tenga el bloque de datos sin codificar, en cada iteracion se acomodan los bits de info en un nuevo bloque (de modo que los bits de control queden en cero), y se calculan los bits de hamming
+    // Esto itera por cada cantidad
+    // de bits de info tenga el bloque de datos
+    // sin codificar, en cada iteracion
+    // se acomodan los bits de info en un nuevo bloque
+    // (de modo que los bits de control queden en cero), y se calculan los bits de hamming
+    for (int i = 0; i < total_bits; i += n) {
         memset(block, 0, block_bytes); // Limpiar el bloque antes de usarlo
 
 
