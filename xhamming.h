@@ -16,36 +16,6 @@ int get_parity_bit_count(int n) {
     return k;
 }
 
-// Encuentra y corrige errores en un bloque usando Hamming
-int find_and_correct_errors(char *block, int size) {
-    int syndrome = 0;
-    int bit_position = 0;
-
-    // First pass: Determine the syndrome
-    for (int i = 0; i < size; i++) {
-        char c = block[i];
-        for (int bit = 0; bit < 8; bit++) {
-            if (c & (1 << bit)) {
-                syndrome ^= bit_position;
-            }
-            bit_position++;
-        }
-    }
-
-    // If syndrome is not zero, correct the error at the syndrome bit position
-    if (syndrome != 0) {
-        int char_index = syndrome / 8;  // Find the character index in the block
-        int bit_index = syndrome % 8;   // Find the bit index in the character
-
-        if (char_index < size) {
-            block[char_index] ^= (1 << bit_index);  // Flip the erroneous bit
-            return syndrome;  // Return the corrected position
-        }
-        return -1;  // Error position out of bounds, indicating multiple errors or other issue
-    }
-    return 0;  // No error found
-}
-
 // Calcula los bits de paridad y configura en el array 'data'
 //                                        8       3
 void calculate_parity_bits(char *data, int n, int k) {
