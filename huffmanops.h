@@ -5,12 +5,12 @@
 // Ademas, retorna el tama�o de esos arreglos
 int calculateFrequencyTable(char* texto, char* letras, int* frecuencias){
     int size = strlen(texto);
-    int freqTmp[128];
+    int freqTmp[256];
 
     // Prepara los arreglos
-    memset(&freqTmp,0,128*sizeof(int));
-    memset(frecuencias,0,128*sizeof(int));
-    memset(letras,0,128);
+    memset(&freqTmp,0,256*sizeof(int));
+    memset(frecuencias,0,256*sizeof(int));
+    memset(letras,0,256);
 
     /*printf("\ntext: %s; size: %d\n",texto,size);*/
 
@@ -21,7 +21,7 @@ int calculateFrequencyTable(char* texto, char* letras, int* frecuencias){
 
     int nonZeroIndex = 0; // Indice para ir llenando los arreglos letras y frecuencias
     // Muestra la tabla de las cantidades
-    for(int i = 0; i < 128; i++){
+    for(int i = 0; i < 256; i++){
         if (freqTmp[i] != 0){
 //            printf("%c: %d\n",i,freqTmp[i]);
             frecuencias[nonZeroIndex] = freqTmp[i];

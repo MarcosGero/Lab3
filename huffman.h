@@ -1,3 +1,5 @@
+#include <time.h>
+
 #include "minheap.h"
 #include "utilidades.h"
 #include "huffmanops.h"
@@ -36,7 +38,7 @@ char* decompress_binary(char* data, size_t size, int validBitsInLastByte, MinHea
     return msj;
 }
 
-int comprimir_huffman(char* input_filename,char* output_filename){
+int comprimir_huffman(char* input_filename, char* output_filename) {
     size_t size;
     char *data = load_file(input_filename, &size); // Carga los datos a codificar
     if (!data) return 1;
@@ -48,52 +50,66 @@ int comprimir_huffman(char* input_filename,char* output_filename){
         return 2;
     }
 
+    clock_t start_time, end_time;
+    double elapsed_time;
 
-    // Calcular tabla de frecuencias (usamos arreglos de 128 porque es la cantidad maxima de caracteres representables por ascii)
-    char c[128];
-    int freq[128];
-    int tam = calculateFrequencyTable(data,&c,&freq);
+    // Calcular tabla de frecuencias
+    start_time = clock();
+    char c[256];
+    int freq[256];
+    int tam = calculateFrequencyTable(data, c, freq);
+    end_time = clock();
+    elapsed_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+    printf("Tiempo para calcular la tabla de frecuencias: %f segundos\n", elapsed_time);
 
+    // Construcción del árbol de Huffman
+    start_time = clock();
+    MinHeapNode* huffmanTreeRoot = HuffmanCodes(c, freq, tam);
+    end_time = clock();
+    elapsed_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+    printf("Tiempo para construir el árbol de Huffman: %f segundos\n", elapsed_time);
 
-    MinHeapNode* huffmanTreeRoot = HuffmanCodes(c,freq,tam);
-
-    char compressionTable[128][MAX_TREE_HT];
-    memset(&compressionTable,0,sizeof(char)*128*MAX_TREE_HT);
-    char arr[MAX_TREE_HT]; // Armar peque?o acumulador para los codigos obtenidos en el barrido del arbol de huffman
+    // Creación de la tabla de Huffman
+    start_time = clock();
+    char compressionTable[256][MAX_TREE_HT];
+    memset(compressionTable, 0, sizeof(char) * 256 * MAX_TREE_HT);
+    char arr[MAX_TREE_HT]; // Armar pequeño acumulador para los códigos obtenidos en el barrido del árbol de Huffman
     int top = 0;
 
-    createHuffmanTable(huffmanTreeRoot,arr,top,&compressionTable);
+    createHuffmanTable(huffmanTreeRoot, arr, top, compressionTable);
+    end_time = clock();
+    elapsed_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+    printf("Tiempo para crear la tabla de Huffman: %f segundos\n", elapsed_time);
 
-    //Ver tabla de compresion
-    //printf("\nTABLA COMPRESION: \n");
-    //for(int i = 0; i < 128; i++){
-    //    printf("%c: %s\n",i,compressionTable[i]);
-    //}
+    // Compresión del mensaje
+    start_time = clock();
+    char* compressedMsj = malloc(sizeof(char) * size * MAX_TREE_HT);
+    size_t compressedMsjIndex = 0;
 
-    // Reservar espacio de mas para el mensaje comprimido
-    char* compressedMsj = malloc(sizeof(char)*size*MAX_TREE_HT);
-    memset(compressedMsj,0,size*MAX_TREE_HT);
-
-    for(int i = 0; i < size; i++){
-        strcat(compressedMsj,compressionTable[data[i]]);
+    for (int i = 0; i < size; i++) {
+        size_t len = strlen(compressionTable[data[i]]);
+        memcpy(compressedMsj + compressedMsjIndex, compressionTable[data[i]], len);
+        compressedMsjIndex += len;
     }
-    /*printf("Se armo el arbol de huffman\n");
-    printHuffmanTree(huffmanTreeRoot);
+    compressedMsj[compressedMsjIndex] = '\0'; // Terminar la cadena
+    end_time = clock();
+    elapsed_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+    printf("Tiempo para comprimir el mensaje: %f segundos\n", elapsed_time);
 
-    printf("Mensaje comprimido: %s\n",compressedMsj);*/
-
-
-    huffmanData inorder[128];
+    // Creación del árbol en orden
+    start_time = clock();
+    huffmanData inorder[256];
     int tamano = 0;
 
-    createInorderTree(huffmanTreeRoot,&inorder,&tamano);
+    createInorderTree(huffmanTreeRoot, inorder, &tamano);
+    end_time = clock();
+    elapsed_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+    printf("Tiempo para crear el árbol en orden: %f segundos\n", elapsed_time);
 
-    /*printf("Inorder creado \n");
-
-    printHuffmanData(inorder,tamano);*/
-
+    // Escritura del archivo comprimido
+    start_time = clock();
     fwrite(&tamano, sizeof(int), 1, out);
-    fwrite(inorder,sizeof(huffmanData),tamano,out); // escribe el array en un archivo
+    fwrite(inorder, sizeof(huffmanData), tamano, out); // escribe el array en un archivo
 
     // Convertir el mensaje comprimido de bits '0' y '1' a bytes reales
     char* binaryData;
@@ -104,7 +120,9 @@ int comprimir_huffman(char* input_filename,char* output_filename){
     // Escribir la cantidad de bits válidos en el último byte del archivo
     fwrite(&validBitsInLastByte, sizeof(int), 1, out);
     fwrite(binaryData, sizeof(char), binarySize, out);
-
+    end_time = clock();
+    elapsed_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+    printf("Tiempo para escribir el archivo comprimido: %f segundos\n", elapsed_time);
 
     // Liberar memoria y cerrar archivos
     free(binaryData);
@@ -112,6 +130,7 @@ int comprimir_huffman(char* input_filename,char* output_filename){
     free(data);
     free(compressedMsj);
     fclose(out);
+
     return 0;
 }
 
