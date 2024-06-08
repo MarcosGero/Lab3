@@ -22,6 +22,21 @@ void print_hex(const char* data, size_t size) {
     }
     printf("\n");
 }
+// Función para calcular estadísticas de compresión
+void calculate_compression_statistics(size_t original_size, size_t compressed_size) {
+    double compression_ratio = (double)compressed_size / original_size * 100;
+    printf("Tamaño original: %zu bytes\n", original_size);
+    printf("Tamaño comprimido: %zu bytes\n", compressed_size);
+    printf("Ratio de compresión: %.2f%%\n", compression_ratio);
+}
+
+// Función para calcular estadísticas de protección
+void calculate_protection_statistics(size_t original_size, size_t protected_size) {
+    double overhead = (double)protected_size / original_size * 100;
+    printf("Tamaño original: %zu bytes\n", original_size);
+    printf("Tamaño protegido: %zu bytes\n", protected_size);
+    printf("Sobrecarga de protección: %.2f%%\n", overhead);
+}
 
 // Función para mostrar contenido en formato binario
 void print_binary(const char* data, size_t size) {
@@ -113,7 +128,8 @@ int main() {
         printf("9.   Comparar tama%cos (Hexadecimal)\n",164);
         printf("10.  Comparar tama%cos (Binario)\n",164);
         printf("11.  Comparar tama%cos (Caracteres)\n\n",164);
-
+        printf("12.  Estadísticas de Compresión\n");
+        printf("13.  Estadísticas de Protección\n");
         printf("0.  Salir\n");
         printf("Seleccione una opcion: ");
         scanf("%d", &choice);
@@ -308,6 +324,56 @@ int main() {
 
                 free(original_content_char);
                 free(compressed_content_char);
+                break;
+                        case 12:
+                printf("Ingrese el nombre del archivo original: ");
+                scanf("%s", input_filename);
+                size_t original_size_comp;
+                char *original_content_comp = load_file(input_filename, &original_size_comp);
+                if (!original_content_comp) {
+                    printf("Error al cargar el archivo original.\n");
+                    break;
+                }
+
+                printf("Ingrese el nombre del archivo comprimido: ");
+                scanf("%s", output_filename);
+                size_t compressed_size_comp;
+                char *compressed_content_comp = load_file(output_filename, &compressed_size_comp);
+                if (!compressed_content_comp) {
+                    printf("Error al cargar el archivo comprimido.\n");
+                    free(original_content_comp);
+                    break;
+                }
+
+                calculate_compression_statistics(original_size_comp, compressed_size_comp);
+
+                free(original_content_comp);
+                free(compressed_content_comp);
+                break;
+            case 13:
+                printf("Ingrese el nombre del archivo original: ");
+                scanf("%s", input_filename);
+                size_t original_size_prot;
+                char *original_content_prot = load_file(input_filename, &original_size_prot);
+                if (!original_content_prot) {
+                    printf("Error al cargar el archivo original.\n");
+                    break;
+                }
+
+                printf("Ingrese el nombre del archivo protegido: ");
+                scanf("%s", output_filename);
+                size_t protected_size;
+                char *protected_content = load_file(output_filename, &protected_size);
+                if (!protected_content) {
+                    printf("Error al cargar el archivo protegido.\n");
+                    free(original_content_prot);
+                    break;
+                }
+
+                calculate_protection_statistics(original_size_prot, protected_size);
+
+                free(original_content_prot);
+                free(protected_content);
                 break;
             case 0:
                 return 0;
