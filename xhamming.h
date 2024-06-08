@@ -108,7 +108,7 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
         //inspect_pointer(block);
 
         fwrite(block, 1, block_bytes, out);  // Escribir bloque protegido
-        printf("<Procesado bloque %d>\n",i/n);
+        //printf("<Procesado bloque %d>\n",i/n);
     }
 
     fclose(out);
@@ -380,15 +380,3 @@ int introduce_two_errors(char *input_filename, char *output_filename) {
     free(data);
     return 0;
 }
-//void char_to_binary(char c, char *output) {
-//    for (int i = 7; i >= 0; i--) {
-//        output[7 - i] = ((c >> i) & 1) ? '1' : '0';
-//    }
-//    output[8] = '\0';
-//}
-//
-//void inspect_pointer(char *ptr) {
-//    char binary[9];
-//    char_to_binary(*ptr, binary);
-//    printf("Value at pointer: %s\n", binary);
-//}
