@@ -85,7 +85,7 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
     for (int i = 0; i < total_bits; i += n) {
         memset(block, 0, block_bytes); // Limpiar el bloque antes de usarlo
 
-
+        if(i>)
         int bitPosACopiar = 0;
 
         for(int j = 0; j < n+k; j++){ // recorre all the bloque
@@ -101,11 +101,11 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
             }
 
         }
-        //inspect_pointer(block);
+
         calculate_parity_bits(block, block_size, k);
-        //inspect_pointer(block);
+
         calculate_block_parity(block,block_size);
-        //inspect_pointer(block);
+
 
         fwrite(block, 1, block_bytes, out);  // Escribir bloque protegido
         //printf("<Procesado bloque %d>\n",i/n);
