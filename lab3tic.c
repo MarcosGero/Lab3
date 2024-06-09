@@ -22,22 +22,37 @@ void print_hex(const char* data, size_t size) {
     }
     printf("\n");
 }
-// Función para calcular estadísticas de compresión
+void print_size(size_t size) {
+    if (size >= 1024 * 1024) {
+        printf("%.2f MB", (double)size / (1024 * 1024));
+    } else if (size >= 1024) {
+        printf("%.2f KB", (double)size / 1024);
+    } else {
+        printf("%zu bytes", size);
+    }
+}
+
 void calculate_compression_statistics(size_t original_size, size_t compressed_size) {
     double compression_ratio = (double)compressed_size / original_size * 100;
-    printf("Tamaño original: %zu bytes\n", original_size);
-    printf("Tamaño comprimido: %zu bytes\n", compressed_size);
+    printf("Tamaño original: ");
+    print_size(original_size);
+    printf("\n");
+    printf("Tamaño comprimido: ");
+    print_size(compressed_size);
+    printf("\n");
     printf("Ratio de compresión: %.2f%%\n", compression_ratio);
 }
 
-// Función para calcular estadísticas de protección
 void calculate_protection_statistics(size_t original_size, size_t protected_size) {
     double overhead = (double)protected_size / original_size * 100;
-    printf("Tamaño original: %zu bytes\n", original_size);
-    printf("Tamaño protegido: %zu bytes\n", protected_size);
+    printf("Tamaño original: ");
+    print_size(original_size);
+    printf("\n");
+    printf("Tamaño protegido: ");
+    print_size(protected_size);
+    printf("\n");
     printf("Sobrecarga de protección: %.2f%%\n", overhead);
 }
-
 // Función para mostrar contenido en formato binario
 void print_binary(const char* data, size_t size) {
     for (size_t i = 0; i < size; i++) {
@@ -113,6 +128,39 @@ void wait_for_enter() {
     printf("Presione Enter para continuar...");
     getchar();
     getchar();
+}
+
+
+
+void change_extension_to_ha(const char *input_filename, char *output_filename1, char *output_filename2, char *output_filename3) {
+    // Copiar el nombre del archivo original
+    strcpy(output_filename1, input_filename);
+    strcpy(output_filename2, input_filename);
+    strcpy(output_filename3, input_filename);
+
+    // Encontrar el último punto en el nombre del archivo
+    char *dot1 = strrchr(output_filename1, '.');
+    char *dot2 = strrchr(output_filename2, '.');
+    char *dot3 = strrchr(output_filename3, '.');
+
+    // Reemplazar la extensión con .HA1, .HA2, .HA3
+    if (dot1) {
+        strcpy(dot1, ".HA1");
+    } else {
+        strcat(output_filename1, ".HA1");
+    }
+
+    if (dot2) {
+        strcpy(dot2, ".HA2");
+    } else {
+        strcat(output_filename2, ".HA2");
+    }
+
+    if (dot3) {
+        strcpy(dot3, ".HA3");
+    } else {
+        strcat(output_filename3, ".HA3");
+    }
 }
 
 
@@ -371,29 +419,55 @@ int main() {
                 break;
             case 13:
                 printf("Ingrese el nombre del archivo original: ");
-                scanf("%s", input_filename);
-                size_t original_size_prot;
-                char *original_content_prot = load_file(input_filename, &original_size_prot);
-                if (!original_content_prot) {
-                    printf("Error al cargar el archivo original.\n");
-                    break;
-                }
-
-                printf("Ingrese el nombre del archivo protegido: ");
-                scanf("%s", output_filename);
-                size_t protected_size;
-                char *protected_content = load_file(output_filename, &protected_size);
-                if (!protected_content) {
-                    printf("Error al cargar el archivo protegido.\n");
-                    free(original_content_prot);
-                    break;
-                }
-
-                calculate_protection_statistics(original_size_prot, protected_size);
-
-                free(original_content_prot);
-                free(protected_content);
+            scanf("%s", input_filename);
+            size_t original_size_prot;
+            char *original_content_prot = load_file(input_filename, &original_size_prot);
+            if (!original_content_prot) {
+                printf("Error al cargar el archivo original.\n");
                 break;
+            }
+
+            char output_filename1[256];
+            char output_filename2[256];
+            char output_filename3[256];
+            change_extension_to_ha(input_filename, output_filename1, output_filename2, output_filename3);
+
+            size_t protected_size1, protected_size2, protected_size3;
+            char *protected_content1 = load_file(output_filename1, &protected_size1);
+            char *protected_content2 = load_file(output_filename2, &protected_size2);
+            char *protected_content3 = load_file(output_filename3, &protected_size3);
+
+            if (!protected_content1 || !protected_content2 || !protected_content3) {
+                printf("Error al cargar los archivos protegidos.\n");
+                free(original_content_prot);
+                if (protected_content1) free(protected_content1);
+                if (protected_content2) free(protected_content2);
+                if (protected_content3) free(protected_content3);
+                break;
+            }
+
+            // Calcular las estadísticas de protección
+            printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~.\n");
+            printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~.\n");
+            printf("Proteccion con Bloques de 8 bits.\n");
+            printf("------------------------------------.\n");
+            calculate_protection_statistics(original_size_prot, protected_size1);
+            printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~.\n");
+            printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~.\n");
+            printf("Proteccion con Bloques de 4096 bits.\n");
+            printf("------------------------------------.\n");
+            calculate_protection_statistics(original_size_prot, protected_size2);
+            printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~.\n");
+            printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~.\n");
+            printf("Proteccion con Bloques de 65536 bits.\n");
+            printf("------------------------------------.\n");
+            calculate_protection_statistics(original_size_prot, protected_size3);
+
+            free(original_content_prot);
+            free(protected_content1);
+            free(protected_content2);
+            free(protected_content3);
+            break;
             case 0:
                 return 0;
             default:
