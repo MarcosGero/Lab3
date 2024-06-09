@@ -3,8 +3,8 @@
 
 // Calcula las frecuencias de los caracteres, y retorna dos arreglos: uno con los caracteres, y otro con sus respectivas frecuencias.
 // Ademas, retorna el tama�o de esos arreglos
-int calculateFrequencyTable(char* texto, char* letras, int* frecuencias){
-    int size = strlen(texto);
+int calculateFrequencyTable(char* texto,size_t textSize, char* letras, int* frecuencias){
+    int size = textSize;
     int freqTmp[256];
 
     // Prepara los arreglos
@@ -16,7 +16,7 @@ int calculateFrequencyTable(char* texto, char* letras, int* frecuencias){
 
     // Escanea todo el archivo y va contando
     for(int i = 0; i < size; i++){
-        freqTmp[texto[i]]++;
+        freqTmp[(unsigned char) texto[i]]++;
     }
 
     int nonZeroIndex = 0; // Indice para ir llenando los arreglos letras y frecuencias

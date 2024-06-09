@@ -4,7 +4,7 @@
 #include "utilidades.h"
 #include "huffmanops.h"
 #define MAX_FILENAME 256
-char* decompress_binary(char* data, size_t size, int validBitsInLastByte, MinHeapNode* root) {
+char* decompress_binary(char* data, size_t size, int validBitsInLastByte, MinHeapNode* root, int *finalSize) {
     MinHeapNode* search = root;
     int bitIndex = 0;
     int charIndex = 0;
@@ -32,7 +32,7 @@ char* decompress_binary(char* data, size_t size, int validBitsInLastByte, MinHea
             charIndex++;
         }
     }
-
+    *finalSize = charIndex;
     // Asegurarse de que el mensaje descomprimido sea nulo terminado
     msj[charIndex] = '\0';
     return msj;
@@ -57,7 +57,7 @@ int comprimir_huffman(char* input_filename, char* output_filename) {
     start_time = clock();
     char c[256];
     int freq[256];
-    int tam = calculateFrequencyTable(data, c, freq);
+    int tam = calculateFrequencyTable(data,size, c, freq);
     end_time = clock();
     elapsed_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
     printf("Tiempo para calcular la tabla de frecuencias: %f segundos\n", elapsed_time);
@@ -87,8 +87,8 @@ int comprimir_huffman(char* input_filename, char* output_filename) {
     size_t compressedMsjIndex = 0;
 
     for (int i = 0; i < size; i++) {
-        size_t len = strlen(compressionTable[data[i]]);
-        memcpy(compressedMsj + compressedMsjIndex, compressionTable[data[i]], len);
+        size_t len = strlen(compressionTable[(unsigned char)data[i]]);
+        memcpy(compressedMsj + compressedMsjIndex, compressionTable[(unsigned char) data[i]], len);
         compressedMsjIndex += len;
     }
     compressedMsj[compressedMsjIndex] = '\0'; // Terminar la cadena
@@ -188,7 +188,8 @@ int descomprimir_huffman(char* input_filename, char* output_filename) {
     compressedData[fileSize] = '\0';
 
     // Descomprimir el mensaje
-    char* decompressedMessage = decompress_binary(compressedData, fileSize, validBitsInLastByte, huffmanTreeRoot);
+    int decompressedMessageSize;
+    char* decompressedMessage = decompress_binary(compressedData, fileSize, validBitsInLastByte, huffmanTreeRoot,&decompressedMessageSize);
 
 
     // Escribir el mensaje descomprimido en el archivo de salida
@@ -204,7 +205,7 @@ int descomprimir_huffman(char* input_filename, char* output_filename) {
     //printf(decompressedMessage);
     //printf("\n");
     /*printf("%d\n",sizeof(decompressedMessage));*/
-    fwrite(decompressedMessage, sizeof(char), strlen(decompressedMessage), out);
+    fwrite(decompressedMessage, sizeof(char), decompressedMessageSize, out);
     fclose(out);
 
     // Liberar memoria
