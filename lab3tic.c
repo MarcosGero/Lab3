@@ -95,6 +95,26 @@ void prepare_output_files(char* input_filename, char* input_filename_noExtension
     sprintf(output_filename, "%s%s", input_filename_noExtension,extension);
 }
 
+void change_extension_to_huf(const char *input_filename, char *output_filename) {
+    // Copiar el nombre del archivo original
+    strcpy(output_filename, input_filename);
+    // Encontrar el último punto en el nombre del archivo
+    char *dot = strrchr(output_filename, '.');
+    if (dot) {
+        // Reemplazar la extensión con .huf
+        strcpy(dot, ".huf");
+    } else {
+        // Si no hay punto, simplemente agregar .huf
+        strcat(output_filename, ".huf");
+    }
+}
+
+void wait_for_enter() {
+    printf("Presione Enter para continuar...");
+    getchar();
+    getchar();
+}
+
 
 // Función principal
 int main() {
@@ -325,7 +345,7 @@ int main() {
                 free(original_content_char);
                 free(compressed_content_char);
                 break;
-                        case 12:
+            case 12:
                 printf("Ingrese el nombre del archivo original: ");
                 scanf("%s", input_filename);
                 size_t original_size_comp;
@@ -335,8 +355,7 @@ int main() {
                     break;
                 }
 
-                printf("Ingrese el nombre del archivo comprimido: ");
-                scanf("%s", output_filename);
+                change_extension_to_huf(input_filename, output_filename);
                 size_t compressed_size_comp;
                 char *compressed_content_comp = load_file(output_filename, &compressed_size_comp);
                 if (!compressed_content_comp) {
@@ -380,6 +399,7 @@ int main() {
             default:
                 printf("Opción inválida.\n");
         }
+        wait_for_enter();
     }
 }
 
