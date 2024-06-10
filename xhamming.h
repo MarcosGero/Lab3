@@ -85,12 +85,12 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
     for (int i = 0; i < total_bits; i += n) {
         memset(block, 0, block_bytes); // Limpiar el bloque antes de usarlo
 
-        if(i>)
+
         int bitPosACopiar = 0;
 
         for(int j = 0; j < n+k; j++){ // recorre all the bloque
 
-            if (bitPosACopiar>size*8) break;
+            if (i+bitPosACopiar>size*8) break;
 
 
             if (!isPowerOfTwo(j+1)){
