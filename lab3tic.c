@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <locale.h>
 #include "huffman.h"
 #include "xhamming.h"
 
@@ -166,6 +167,7 @@ void change_extension_to_ha(const char *input_filename, char *output_filename1, 
 
 // Función principal
 int main() {
+    setlocale(LC_ALL, "");
     char input_filename[MAX_FILENAME];
     char input_filename_noExtension[MAX_FILENAME];
     char output_filename[MAX_FILENAME];
@@ -193,11 +195,11 @@ int main() {
         // Analiticas
         printf("[ESTADISTICAS]\n");
         printf("8.   Mostrar contenido archivo\n");
-        printf("9.   Comparar tama%cos (Hexadecimal)\n",164);
-        printf("10.  Comparar tama%cos (Binario)\n",164);
-        printf("11.  Comparar tama%cos (Caracteres)\n\n",164);
-        printf("12.  Estadísticas de Compresión\n");
-        printf("13.  Estadísticas de Protección\n");
+        printf("9.   Comparar tamaños (Hexadecimal)\n");
+        printf("10.  Comparar tamaños (Binario)\n");
+        printf("11.  Comparar tamaños (Caracteres)\n\n");
+        printf("12.  Estadisticas de Compresión\n");
+        printf("13.  Estadisticas de Protección\n");
         printf("0.  Salir\n");
         printf("Seleccione una opcion: ");
         scanf("%d", &choice);

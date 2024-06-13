@@ -69,7 +69,7 @@ int isPowerOfTwo(int x){
 }
 
 
-// Establece el bit en la posici?n 'pos' (0-indexado)
+// Establece el bit en la posicion 'pos' (0-indexado)
 void set_bit(char *array, int pos, int value) {
     int byte_pos = pos / 8;
     int bit_pos = pos % 8;
@@ -79,7 +79,7 @@ void set_bit(char *array, int pos, int value) {
         array[byte_pos] &= ~(1 << 7-bit_pos);
 }
 
-// Obt?n el bit en la posici?n 'pos' (0-indexado)
+// Se obtiene el bit en la posicion 'pos' (0-indexado)
 int get_bit(char *array, int pos) {
     int byte_pos = pos / 8;
     int bit_pos = pos % 8;
@@ -139,25 +139,25 @@ void printTreeHelper(MinHeapNode* root, int depth) {
         return;
     }
 
-    // Indentar según la profundidad del nodo en el árbol
+    // Indentar segï¿½n la profundidad del nodo en el ï¿½rbol
     for (int i = 0; i < depth; i++) {
         printf("  ");
     }
 
-    // Imprimir el carácter y la frecuencia del nodo actual
+    // Imprimir el carï¿½cter y la frecuencia del nodo actual
     printf("%c (%d)\n", root->data.c, root->data.freq);
 
-    // Llamada recursiva para imprimir el subárbol izquierdo y derecho
+    // Llamada recursiva para imprimir el subï¿½rbol izquierdo y derecho
     printTreeHelper(root->left, depth + 1);
     printTreeHelper(root->right, depth + 1);
 }
 void printHuffmanTree(MinHeapNode* root) {
     printTreeHelper(root, 0);
 }
-// Función para convertir la cadena de '0' y '1' a bytes reales
+// Funciï¿½n para convertir la cadena de '0' y '1' a bytes reales
 void convertToBinary(char* bits, char** binaryData, size_t* binarySize, int* validBitsInLastByte) {
     size_t len = strlen(bits);
-    *binarySize = (len + 7) / 8; // Número de bytes necesarios
+    *binarySize = (len + 7) / 8; // Nï¿½mero de bytes necesarios
     *binaryData = (char*)malloc(*binarySize);
     memset(*binaryData, 0, *binarySize);
 
@@ -169,6 +169,6 @@ void convertToBinary(char* bits, char** binaryData, size_t* binarySize, int* val
 
     *validBitsInLastByte = len % 8;
     if (*validBitsInLastByte == 0) {
-        *validBitsInLastByte = 8; // Si no hay padding, todos los bits en el último byte son válidos
+        *validBitsInLastByte = 8; // Si no hay padding, todos los bits en el ï¿½ltimo byte son vï¿½lidos
     }
 }
