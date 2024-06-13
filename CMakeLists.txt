@@ -9,4 +9,5 @@ add_executable(Lab3 lab3tic.c
         hamming.h
         huffmanops.h
         minheap.h
-        utilidades.h)
+        utilidades.h
+        huffman.h)

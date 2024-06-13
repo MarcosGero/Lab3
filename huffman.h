@@ -73,9 +73,9 @@ int comprimir_huffman(char* input_filename, char* output_filename) {
     start_time = clock();
     char compressionTable[256][MAX_TREE_HT];
     memset(compressionTable, 0, sizeof(char) * 256 * MAX_TREE_HT);
+
     char arr[MAX_TREE_HT]; // Armar pequeño acumulador para los códigos obtenidos en el barrido del árbol de Huffman
     int top = 0;
-
     createHuffmanTable(huffmanTreeRoot, arr, top, compressionTable);
     end_time = clock();
     elapsed_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
