@@ -241,14 +241,14 @@ int correct_error(char *data,  int block_size, size_t size){
                 if (parity) {
                     // Paridad impar, un solo error
                     index -= 1;
-                    printf("Error encontrado,corrigiendo...\n");
+                    //printf("Error encontrado,corrigiendo...\n");
                     set_bit(data, i*8 + index, !get_bit(data, i*8 + index));
                 }else {
-                    printf("Se encontraron dos errores en el bloque a partir de la posición %d\n", i);
+                    //printf("Se encontraron dos errores en el bloque a partir de la posición %d\n", i);
                     return 1; // Retornar indicando que hubo un error que no se pudo corregir
                 }
             }else{
-                printf("%d No se encontraron errores c:\n",i);
+                //printf("%d No se encontraron errores c:\n",i);
             }
         }
         return 0;
@@ -308,7 +308,7 @@ int decode_file(const char *input_filename, const char *output_filename, int blo
                 // Condicion de parada al leer un caracter 0 (caso en donde el bloque no se usa en su totalidad) (se comprueba cada 8 bits para asegurarse que el caracter haya sido creado en su totalidad)
                 if (output_index % 8 == 0 && stop == 0) {
                         output_index--; // Correccion del indice de salida por como funciona el operador modulo
-                        printf("NO HAY MAS CARACTERES PARA DECODIFICAR\n");
+                        //printf("NO HAY MAS CARACTERES PARA DECODIFICAR\n");
                         break;
                 }
                 output_index++;

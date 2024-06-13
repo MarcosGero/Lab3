@@ -308,12 +308,13 @@ int main() {
             // Mostrar contenido archivo
             case 8:
                 printf("Ingrese el nombre del archivo: ");
-                scanf("%s", input_filename);
+                scanf("%255s", input_filename);
 
                 size_t size;
                 char *content = load_file(input_filename, &size);
                 if (content) {
-                    printf("Contenido del archivo:\n%s\n", content);
+                    printf("Contenido del archivo (tamaño: %zu):\n", size);
+                    printf("%s\n", content);
                     free(content);
                 } else {
                     printf("Error al cargar el archivo.\n");
