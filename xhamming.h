@@ -49,6 +49,22 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
     char *data = load_file(input_filename, &size); // Carga los datos a codificar
     if (!data) return 1;
 
+    // INICIO SHIFTEO MENSAJE
+    // Insertar tamaño del mensaje al principio del mensaje original
+    realloc(data,size+sizeof(size_t)); // Agrega espacio
+    size = size + sizeof(size_t);
+    printf("%s",data);
+    memmove(data+sizeof(size_t),data,size-sizeof(size_t));
+    //memccpy(data+sizeof(size_t),data,size-sizeof(size_t),sizeof(char));
+
+    // El size que se usa en la funcion de abajo es el size_t que va a estar adelante del mensaje
+    memccpy(data,&size,1,sizeof(size_t));
+    // FIN SHIFTEO MENSAJE (falta verificar si el mensaje final queda bien)
+
+    printf("==============\n");
+    //printf("%s",data);
+    //printf("%d",size);
+    printBlock(data,size);
     int total_bits = size * 8;
     int k = get_parity_bit_count(data_size);
     int n = data_size;
