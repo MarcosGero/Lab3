@@ -1,5 +1,6 @@
 /// Funciones varias para leer archivos e imprimir bits
 // Carga un archivo
+#pragma once
 char *load_file(const char *filename, size_t *size) {
     FILE *file = fopen(filename, "rb");
     if (!file) {
@@ -23,7 +24,49 @@ char *load_file(const char *filename, size_t *size) {
     fclose(file);
     return buffer;
 }
+char *load_file2(const char *filename, size_t *size) {
+    FILE *file = fopen(filename, "rb");
+    if (!file) {
+        perror("Error al abrir el archivo");
+        return NULL;
+    }
 
+    fseek(file, 0, SEEK_END);
+    *size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    size_t total_size = sizeof(int) + 8 * sizeof(char) + *size + 1;
+    char *buffer = malloc(total_size);
+    if (!buffer) {
+        perror("Error al reservar memoria");
+        fclose(file);
+        return NULL;
+    }
+
+    // Initialize the integer and 8 characters
+    int *int_ptr = (int *)buffer;
+    *int_ptr = 12; // Example initialization
+
+    char *char_ptr = buffer + sizeof(int);
+    for (int i = 0; i < 8; i++) {
+        char_ptr[i] = 0; // Example initialization
+    }
+
+    // Read the file contents
+    char *file_data_ptr = buffer + sizeof(int) + 8 * sizeof(char);
+    size_t bytesRead = fread(file_data_ptr, 1, *size, file);
+    if (bytesRead != *size) {
+        perror("Error al leer el archivo");
+        free(buffer);
+        fclose(file);
+        return NULL;
+    }
+    file_data_ptr[*size] = '\0'; // For string handling
+    // Print entire buffer for debugging
+
+    fclose(file);
+    return buffer;
+}
 void printChar(const char a){
     printf(" %c: ",a);
     for (int bit = 7; bit > -1; bit--) {

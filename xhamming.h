@@ -4,6 +4,8 @@
 #include <math.h>
 #include <time.h>
 
+#include "utilidades.h"
+
 
 #define MAX_FILENAME 256
 
@@ -46,7 +48,7 @@ void calculate_block_parity(char *block, int block_size) {
 // Función para proteger el archivo usando el código de Hamming
 int protect_file(const char *input_filename, int data_size, const char *output_filename) {
     size_t size;
-    char *data = load_file(input_filename, &size); // Carga los datos a codificar
+    char *data = load_file2(input_filename, &size); // Carga los datos a codificar
     if (!data) return 1;
 
     int total_bits = size * 8;
@@ -62,7 +64,8 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
         free(data);
         return 2;
     }
-
+    printf("%s",data);
+    scanf("%c");
     // Pide memoria para un unico bloque
     int block_bytes = (block_size + 7) / 8;
     printf("Block Size in Bytes: %d: \n",block_bytes);
