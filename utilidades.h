@@ -45,7 +45,7 @@ char *load_file2(const char *filename, size_t *size) {
 
     // Initialize the integer and 8 characters
     int *int_ptr = (int *)buffer;
-    *int_ptr = 12; // Example initialization
+    *int_ptr = 0; // Example initialization
 
     char *char_ptr = buffer + sizeof(int);
     for (int i = 0; i < 8; i++) {
