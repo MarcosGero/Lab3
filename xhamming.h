@@ -102,7 +102,7 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
     *leftover_bits_ptr = leftover_bits;
 
     printf("n, k: (%i, %i), blocksize: %i \n",n,k,block_size);
-
+    printf("%d",*data);
     // Preparar archivo de Salida
     FILE *out = fopen(output_filename, "wb");
     if (!out) {
@@ -144,8 +144,6 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
 
             if (!isPowerOfTwo(j+1)){
                 set_bit(block,j,get_bit(data,i+bitPosACopiar));
-                char *chartest = &data[i];
-              //  inspect_pointer(chartest);
                 bitPosACopiar++;
             }
 
@@ -173,10 +171,11 @@ int decode_file(const char *input_filename, const char *output_filename, int blo
     char *data = load_file(input_filename, &size);
     if (!data) return 1;
 
-    int leftover_bits = *((int *)data); // Read leftover bits
+    int leftover_bits = *(int *)data;
     data += sizeof(int) + 8 * sizeof(char);
     size -= sizeof(int) + 8 * sizeof(char);
 
+    printf("Leftover bits: %d\n", leftover_bits);
     int parity_bits = get_parity_bit_count(block_size); // nro bits de control
     int data_bits = block_size; // nro bits de info
     block_size = data_bits + parity_bits+1;
