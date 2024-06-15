@@ -100,6 +100,7 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
     // Guardar los bits
     int *leftover_bits_ptr = (int *)data;
     *leftover_bits_ptr = leftover_bits;
+    printf("Leftover bits using data: %d\n", *((int *)data));
 
     printf("n, k: (%i, %i), blocksize: %i \n",n,k,block_size);
     printf("%d",*data);
@@ -171,14 +172,37 @@ int decode_file(const char *input_filename, const char *output_filename, int blo
     char *data = load_file(input_filename, &size);
     if (!data) return 1;
 
-    int leftover_bits = *(int *)data;
-    data += sizeof(int) + 8 * sizeof(char);
-    size -= sizeof(int) + 8 * sizeof(char);
-
-    printf("Leftover bits: %d\n", leftover_bits);
     int parity_bits = get_parity_bit_count(block_size); // nro bits de control
     int data_bits = block_size; // nro bits de info
     block_size = data_bits + parity_bits+1;
+
+    if(correct_errors){
+        correct_error(data,block_size,size);
+    }
+    ////////
+    // Decodificación de bits sobrantes
+    int decoded_leftover_bits = 0;  // Para almacenar los bits decodificados
+    int extraProtec = get_parity_bit_count(32);
+    for (int i = 0; i < 32+extraProtec ; i++) {
+        if (!isPowerOfTwo(i + 1)) {
+            int bitToCopy = get_bit(data, i);
+            printf("%d",bitToCopy);
+            set_bit((char*)&decoded_leftover_bits, i, bitToCopy);
+        }
+    }
+
+    printf("Decoded leftover bits: %d\n", decoded_leftover_bits);
+
+
+
+
+    ///
+    int leftover_bits=752;
+    int offset = 12;
+    data += offset;
+    size -= offset;
+
+
     int data_bytes = data_bits/8 + (data_bits % 8 != 0); // tecnica de redondeo hacia arriba
 
     int block_bytes = (block_size + 7) / 8;
@@ -206,9 +230,7 @@ int decode_file(const char *input_filename, const char *output_filename, int blo
         return 2;
     }
 
-    if(correct_errors){
-        correct_error(data,block_size,size);
-    }
+
     char *output_block = malloc(data_bytes);
     int output_index = 0;
     int total_bytes_to_process = (totalDataBitsStop+parity_bits*cantBloquesCompletos+numberOfControlBits)/8;
@@ -218,7 +240,7 @@ int decode_file(const char *input_filename, const char *output_filename, int blo
 
         int output_block_index = 0;
         for (int j = 0; j < block_size; j++) {
-            if (!isPowerOfTwo(j + 1)) {
+            if (!isPowerOfTwo(j + offset + 1)) {
 
 
                 int bitToCopy = get_bit(data, i + j);
