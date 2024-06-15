@@ -43,33 +43,53 @@ void calculate_block_parity(char *block, int block_size) {
     set_bit(block, block_size - 1, parity);
 }
 
+size_t calcularNullRestantes(size_t size, size_t block_size){
+    return block_size - (size % block_size);
+}
+
 // Función para proteger el archivo usando el código de Hamming
 int protect_file(const char *input_filename, int data_size, const char *output_filename) {
     size_t size;
     char *data = load_file(input_filename, &size); // Carga los datos a codificar
     if (!data) return 1;
 
+
+
+
     // INICIO SHIFTEO MENSAJE
     // Insertar tamaño del mensaje al principio del mensaje original
-    realloc(data,size+sizeof(size_t)); // Agrega espacio
-    size = size + sizeof(size_t);
-    printf("%s",data);
-    memmove(data+sizeof(size_t),data,size-sizeof(size_t));
-    //memccpy(data+sizeof(size_t),data,size-sizeof(size_t),sizeof(char));
+    size_t oldSize = size; // Acá deberia estar la cantidad de NULL que nos faltan (pienso usar modulo)
 
+    realloc(data,size+sizeof(size_t)); // Agrega espacio
+    if (data == NULL) {
+        printf("FALLO EN REALLOC\n");
+        return 1;
+    }
+
+    size = size + sizeof(size_t);
+    memmove(data+sizeof(size_t),data,size-sizeof(size_t));
     // El size que se usa en la funcion de abajo es el size_t que va a estar adelante del mensaje
-    memccpy(data,&size,1,sizeof(size_t));
+
+
+//    oldSize = calcularNullRestantes(oldSize,(size_t) (data_size/8));
+    printf("Size a Guardar: %d\n",oldSize);
+    memset(data,0,sizeof(size_t)); // Evita Basura
+    memcpy(data,&oldSize,sizeof(size_t));
+
+
+
+//    printBlock(data,size);
     // FIN SHIFTEO MENSAJE (falta verificar si el mensaje final queda bien)
 
-    printf("==============\n");
-    //printf("%s",data);
-    //printf("%d",size);
-    printBlock(data,size);
-    int total_bits = size * 8;
+
+
+    size_t total_bits = size * 8;
     int k = get_parity_bit_count(data_size);
     int n = data_size;
     int block_size = n + k + 1;
+    int block_bytes = (block_size + 7) / 8;
     printf("n, k: (%i, %i), blocksize: %i \n",n,k,block_size);
+    printf("total bits: %d\n",total_bits);
 
     // Preparar archivo de Salida
     FILE *out = fopen(output_filename, "wb");
@@ -80,7 +100,6 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
     }
 
     // Pide memoria para un unico bloque
-    int block_bytes = (block_size + 7) / 8;
     printf("Block Size in Bytes: %d: \n",block_bytes);
     char *block = malloc(block_bytes); // Pide espacio para un unico bloque que se reutilizará por cada iteracion de hamming
     if (!block) {
@@ -311,31 +330,32 @@ int decode_file(const char *input_filename, const char *output_filename, int blo
 
     int output_index = 0;
     for (int i = 0; i < size; i += block_bytes) {
-        char stop = 'a';
         for (int j = 0; j < block_size; j++) {
+
+            if (output_index > size*8) break; // Condicion de parada por si se excede
+
 
             // Copia los bits de data en output_data eliminando los bits de control
             if (!isPowerOfTwo(j+1)) {
                 int bitToCopy = get_bit(data, i*8+j);
                 set_bit(output_data, output_index, bitToCopy);
-
-                // Ir construyendo caracter de control
-                set_bit(&stop,output_index%8,bitToCopy);
-                // Condicion de parada al leer un caracter 0 (caso en donde el bloque no se usa en su totalidad) (se comprueba cada 8 bits para asegurarse que el caracter haya sido creado en su totalidad)
-                if (output_index % 8 == 0 && stop == 0) {
-                        output_index--; // Correccion del indice de salida por como funciona el operador modulo
-                        //printf("NO HAY MAS CARACTERES PARA DECODIFICAR\n");
-                        break;
-                }
                 output_index++;
             }
-
-
         }
     }
 
+
+    size_t decompressedSize;
+    memccpy(&decompressedSize,output_data,1,sizeof(size_t)); // se recupera bien ?
+    printf("Size recuperado: %d\n",decompressedSize);
+//    printBlock(output_data,output_index);
+
+
+
     // Escribir los datos decodificados al archivo, considerando los bits efectivamente utilizados
-    fwrite(output_data, 1, output_index / 8, out); // Write the actual bytes used
+//    fwrite(output_data+sizeof(size_t), 1, output_index / 8 - decompressedSize, out); // Write the actual bytes used
+    fwrite(output_data+sizeof(size_t), 1, decompressedSize, out); // Write the actual bytes used
+
     fclose(out);
     free(data);
     free(output_data);

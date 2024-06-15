@@ -23,6 +23,40 @@ char *load_file(const char *filename, size_t *size) {
     fclose(file);
     return buffer;
 }
+/// Funciones varias para leer archivos e imprimir bits
+// Carga un archivo
+char *load_file2(const char *filename, size_t *size) {
+    FILE *file = fopen(filename, "rb");
+    if (!file) {
+        perror("Error al abrir el archivo");
+        return NULL;
+    }
+
+    fseek(file, 0, SEEK_END);
+    *size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    size_t total_size = sizeof(int) + 8 + *size + 1;
+    char *buffer = malloc(total_size);
+    if (!buffer) {
+        perror("Error al reservar memoria");
+        fclose(file);
+        return NULL;
+    }
+
+    // Optionally initialize the int and 8 chars to some values
+    int *int_ptr = (int *)buffer;
+    *int_ptr = 0; // Example initialization
+    char *char_ptr = buffer + sizeof(int);
+    for (int i = 0; i < 8; i++) {
+        char_ptr[i] = 0; // Example initialization
+    }
+
+    fread(buffer + sizeof(int) + 8, 1, *size, file);
+    buffer[total_size - 1] = '\0'; // For string handling
+    fclose(file);
+    return buffer;
+}
 
 void printChar(const char a){
     printf(" %c: ",a);
