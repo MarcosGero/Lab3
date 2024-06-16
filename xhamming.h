@@ -4,8 +4,6 @@
 #include <math.h>
 #include <time.h>
 
-#include "utilidades.h"
-
 
 #define MAX_FILENAME 256
 
@@ -44,42 +42,9 @@ void calculate_block_parity(char *block, int block_size) {
     // Establecer el bit de paridad al final del bloque
     set_bit(block, block_size - 1, parity);
 }
-int correct_error(char *data,  int block_size, size_t size){
 
-
-    int block_bytes = (block_size-1 + 7) / 8;
-
-    for (int i = 0; i < size; i += block_bytes) {
-        if(i == 3) {
-            printf("a");
-        }
-        int index = 0;
-        int parity = 0;
-        int pos = 0;
-        for (int j = 0; j < block_size-1; j++) {
-            pos = i*8+j;
-            if(get_bit(data,pos)){
-                index ^= j+1;
-                parity ^= 1;
-            }
-        }
-        if(get_bit(data,pos+1))  parity ^= 1;
-        if(index){
-            if (parity) {
-                // Paridad impar, un solo error
-                index -= 1;
-                //printf("Error encontrado,corrigiendo...\n");
-                set_bit(data, i*8 + index, !get_bit(data, i*8 + index));
-            }else {
-                //printf("Se encontraron dos errores en el bloque a partir de la posición %d\n", i);
-                return 1; // Retornar indicando que hubo un error que no se pudo corregir
-            }
-        }else{
-            //printf("%d No se encontraron errores c:\n",i);
-        }
-    }
-    return 0;
-
+size_t calcularNullRestantes(size_t size, size_t block_size){
+    return block_size - (size % block_size);
 }
 
 // Función para proteger el archivo usando el código de Hamming
@@ -88,22 +53,36 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
     char *data = load_file2(input_filename, &size); // Carga los datos a codificar
     if (!data) return 1;
 
-    int total_bits = size * 8;
+
+
+
+    // INICIO SHIFTEO MENSAJE
+    // Insertar tamaño del mensaje al principio del mensaje original
+    size_t oldSize = size; // Acá deberia estar la cantidad de NULL que nos faltan (pienso usar modulo)
+
+
+    size = size + sizeof(size_t);
+    // El size que se usa en la funcion de abajo es el size_t que va a estar adelante del mensaje
+
+
+//    oldSize = calcularNullRestantes(oldSize,(size_t) (data_size/8));
+    printf("Size a Guardar: %d\n",oldSize);
+
+
+
+//    printBlock(data,size);
+    // FIN SHIFTEO MENSAJE (falta verificar si el mensaje final queda bien)
+
+
+
+    size_t total_bits = size * 8;
     int k = get_parity_bit_count(data_size);
     int n = data_size;
     int block_size = n + k + 1;
-
-    // Calcular los bits sobrantes
-    //int num_full_blocks = total_bits / n;
-    int leftover_bits = total_bits % n;
-
-    // Guardar los bits
-    int *leftover_bits_ptr = (int *)data;
-    *leftover_bits_ptr = leftover_bits;
-    printf("Leftover bits using data: %d\n", *((int *)data));
-
+    int block_bytes = (block_size + 7) / 8;
     printf("n, k: (%i, %i), blocksize: %i \n",n,k,block_size);
-    printf("%d",*data);
+    printf("total bits: %d\n",total_bits);
+
     // Preparar archivo de Salida
     FILE *out = fopen(output_filename, "wb");
     if (!out) {
@@ -111,10 +90,8 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
         free(data);
         return 2;
     }
-    printf("%s",data+ sizeof(int) + 8 * sizeof(char));
 
     // Pide memoria para un unico bloque
-    int block_bytes = (block_size + 7) / 8;
     printf("Block Size in Bytes: %d: \n",block_bytes);
     char *block = malloc(block_bytes); // Pide espacio para un unico bloque que se reutilizará por cada iteracion de hamming
     if (!block) {
@@ -145,6 +122,8 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
 
             if (!isPowerOfTwo(j+1)){
                 set_bit(block,j,get_bit(data,i+bitPosACopiar));
+                char *chartest = &data[i];
+              //  inspect_pointer(chartest);
                 bitPosACopiar++;
             }
 
@@ -165,105 +144,6 @@ int protect_file(const char *input_filename, int data_size, const char *output_f
     return 0;
 }
 
-
-// Función para decodificar el archivo, opcionalmente corrigiendo errores
-int decode_file(const char *input_filename, const char *output_filename, int block_size, int correct_errors) {
-    size_t size;
-    char *data = load_file(input_filename, &size);
-    if (!data) return 1;
-
-    int parity_bits = get_parity_bit_count(block_size); // nro bits de control
-    int data_bits = block_size; // nro bits de info
-    block_size = data_bits + parity_bits+1;
-
-    if(correct_errors){
-        correct_error(data,block_size,size);
-    }
-    ////////
-    // Decodificación de bits sobrantes
-    int decoded_leftover_bits = 0;  // Para almacenar los bits decodificados
-    int extraProtec = get_parity_bit_count(32);
-    for (int i = 0; i < 32+extraProtec ; i++) {
-        if (!isPowerOfTwo(i + 1)) {
-            int bitToCopy = get_bit(data, i);
-            printf("%d",bitToCopy);
-            set_bit((char*)&decoded_leftover_bits, i, bitToCopy);
-        }
-    }
-
-    printf("Decoded leftover bits: %d\n", decoded_leftover_bits);
-
-
-
-
-    ///
-    int leftover_bits=752;
-    int offset = 12;
-    data += offset;
-    size -= offset;
-
-
-    int data_bytes = data_bits/8 + (data_bits % 8 != 0); // tecnica de redondeo hacia arriba
-
-    int block_bytes = (block_size + 7) / 8;
-
-    int numberOfBlocks = size/block_bytes;
-    int totalDataBits = numberOfBlocks*data_bits;
-    int totalDataBytes = totalDataBits/8;
-    int numberOfControlBits = get_parity_bit_count(leftover_bits);
-
-    int cantBloquesCompletos = (size * 8 - numberOfControlBits - leftover_bits) / block_size;
-    int totalDataBitsStop = cantBloquesCompletos*data_bits + leftover_bits;
-//    block_size = getBlockSizeByExtension(input_filename);
-
-    printf("%d,%d,%d,%d,%d, %d, %d\n",parity_bits,data_bits,data_bytes,numberOfBlocks,block_size,totalDataBytes,totalDataBits);
-
-
-    // Pide espacio para la cadena de caracteres decodificada
-    //char *output_data = malloc(size);
-    //memset(output_data,0,size);
-
-    FILE *out = fopen(output_filename, "wb");
-    if (!out) {
-        perror("Error al crear el archivo decodificado");
-        free(data);
-        return 2;
-    }
-
-
-    char *output_block = malloc(data_bytes);
-    int output_index = 0;
-    int total_bytes_to_process = (totalDataBitsStop+parity_bits*cantBloquesCompletos+numberOfControlBits)/8;
-
-    for (int i = 0; i < total_bytes_to_process; i += block_bytes) {
-        memset(output_block, 0, data_bytes);
-
-        int output_block_index = 0;
-        for (int j = 0; j < block_size; j++) {
-            if (!isPowerOfTwo(j + offset + 1)) {
-
-
-                int bitToCopy = get_bit(data, i + j);
-                set_bit(output_block, output_block_index, bitToCopy);
-
-
-                if (output_index >= totalDataBitsStop) {
-                    break;
-                }
-                output_block_index++;
-                output_index++;
-            }
-
-        }
-        fwrite(output_block, 1, output_block_index / 8, out);
-    }
-
-    // Escribir los datos decodificados al archivo, considerando los bits efectivamente utilizados
-    fclose(out);
-    free(data);
-    free(output_block);
-    return 0;
-}
 
 // Dado el nombre de un archivo, devuelve en entero el tipo de bloque de hamming que es
 int getExtensionIndex(char* input_filename){
@@ -364,6 +244,116 @@ int introduce_errors(char *input_filename, char *output_filename) {
 }
 
 
+int correct_error(char *data,  int block_size, size_t size){
+
+
+        int block_bytes = (block_size-1 + 7) / 8;
+
+        for (int i = 0; i < size; i += block_bytes) {
+            if(i == 3) {
+                printf("a");
+            }
+            int index = 0;
+            int parity = 0;
+            int pos = 0;
+            for (int j = 0; j < block_size-1; j++) {
+                pos = i*8+j;
+                if(get_bit(data,pos)){
+                    index ^= j+1;
+                    parity ^= 1;
+                }
+            }
+            if(get_bit(data,pos+1))  parity ^= 1;
+            if(index){
+                if (parity) {
+                    // Paridad impar, un solo error
+                    index -= 1;
+                    //printf("Error encontrado,corrigiendo...\n");
+                    set_bit(data, i*8 + index, !get_bit(data, i*8 + index));
+                }else {
+                    //printf("Se encontraron dos errores en el bloque a partir de la posición %d\n", i);
+                    return 1; // Retornar indicando que hubo un error que no se pudo corregir
+                }
+            }else{
+                //printf("%d No se encontraron errores c:\n",i);
+            }
+        }
+        return 0;
+
+}
+
+
+// Función para decodificar el archivo, opcionalmente corrigiendo errores
+int decode_file(const char *input_filename, const char *output_filename, int block_size, int correct_errors) {
+    size_t size;
+    char *data = load_file(input_filename, &size);
+    if (!data) return 1;
+
+    int parity_bits = get_parity_bit_count(block_size); // nro bits de control
+    int data_bits = block_size; // nro bits de info
+    block_size = data_bits + parity_bits+1;
+    int data_bytes = data_bits/8 + (data_bits % 8 != 0); // tecnica de redondeo hacia arriba
+
+    int block_bytes = (block_size + 7) / 8;
+
+    int numberOfBlocks = size/block_bytes;
+    int totalDataBits = numberOfBlocks*data_bits;
+    int totalDataBytes = totalDataBits/8;
+
+
+//    block_size = getBlockSizeByExtension(input_filename);
+
+    printf("%d,%d,%d,%d,%d, %d, %d\n",parity_bits,data_bits,data_bytes,numberOfBlocks,block_size,totalDataBytes,totalDataBits);
+
+
+    // Pide espacio para la cadena de caracteres decodificada
+    char *output_data = malloc(size);
+    memset(output_data,0,size);
+
+    FILE *out = fopen(output_filename, "wb");
+    if (!out) {
+        perror("Error al crear el archivo decodificado");
+        free(data);
+        return 2;
+    }
+
+    if(correct_errors){
+        correct_error(data,block_size,size);
+    }
+
+    int output_index = 0;
+    for (int i = 0; i < size; i += block_bytes) {
+        for (int j = 0; j < block_size; j++) {
+
+            if (output_index > size*8) break; // Condicion de parada por si se excede
+
+
+            // Copia los bits de data en output_data eliminando los bits de control
+            if (!isPowerOfTwo(j+1)) {
+                int bitToCopy = get_bit(data, i*8+j);
+                set_bit(output_data, output_index, bitToCopy);
+                output_index++;
+            }
+        }
+    }
+
+
+    size_t decompressedSize;
+    memccpy(&decompressedSize,output_data,1,sizeof(size_t)); // se recupera bien ?
+    printf("Size recuperado: %d\n",decompressedSize);
+//    printBlock(output_data,output_index);
+
+
+
+    // Escribir los datos decodificados al archivo, considerando los bits efectivamente utilizados
+//    fwrite(output_data+sizeof(size_t), 1, output_index / 8 - decompressedSize, out); // Write the actual bytes used
+    fwrite(output_data+sizeof(size_t), 1, decompressedSize, out); // Write the actual bytes used
+
+    fclose(out);
+    free(data);
+    free(output_data);
+    return 0;
+}
 
 // Introducir dos errores
 
