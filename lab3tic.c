@@ -11,7 +11,70 @@
 #define MAX_CONTENT_SIZE 8192
 
 
+void print_hex_error(const char* data, size_t size, const int *error_positions, size_t error_count) {
+    size_t error_index = 0;
+    for (size_t i = 0; i < size; i++) {
+        int is_error = (error_index < error_count && error_positions[error_index] == i);
+        if (is_error) {
+            printf(RED "%02x " RESET, (unsigned char)data[i]);
+            error_index++;
+        } else {
+            printf("%02x ", (unsigned char)data[i]);
+        }
+        if ((i + 1) % 16 == 0)
+            printf("\n");
+    }
+    printf("\n");
+}
 
+int correct_error_and_print(char *data, int block_size, size_t size) {
+    int parity_bits = get_parity_bit_count(block_size); // nro bits de control
+    int data_bits = block_size; // nro bits de info
+    block_size = data_bits + parity_bits+1;
+
+    int block_bytes = (block_size-1 + 7) / 8;
+
+    int *error_positions = (int *)malloc(size * sizeof(int));
+    size_t error_count = 0;
+    printf("blocksize %d\n",block_size);
+    for (int i = 0; i < size; i += block_bytes) {
+        int index = 0;
+        int parity = 0;
+        int pos = 0;
+        for (int j = 0; j < block_size-1; j++) {
+            pos = i*8+j;
+            if (get_bit(data, pos)) {
+                index ^= j+1;
+                parity ^= 1;
+            }
+        }
+        if (get_bit(data, pos+1)) parity ^= 1;
+        if (index) {
+            if (parity) {
+                // Paridad impar, un solo error
+                index -= 1;
+                printf("Se encontro un error\n");
+                //set_bit(data, i*8 + index, !get_bit(data, i*8 + index));
+                error_positions[error_count++] = i + index / 8;
+            } else {
+                free(error_positions);
+                return 1; // Retornar indicando que hubo un error que no se pudo corregir
+            }
+        }
+    }
+
+    print_hex_error(data, size, error_positions, error_count);
+    free(error_positions);
+    return 0;
+}
+
+void show_files_in_console_protected(char *original_content, size_t size, char *compressed_content, size_t compressed_size,int block_size) {
+    printf(RED "Archivo Original (Hexadecimal):\n" RESET);
+    correct_error_and_print(original_content, block_size, size);
+
+    printf(GREEN "Archivo Protegido con errores (Hexadecimal):\n" RESET);
+    correct_error_and_print(compressed_content, block_size, compressed_size);
+}
 
 
 // Función principal
@@ -44,11 +107,12 @@ int main() {
         // Analiticas
         printf("[ESTADISTICAS]\n");
         printf("8.   Mostrar contenido archivo\n");
-        printf("9.   Comparar tamaños (Hexadecimal)\n");
-        printf("10.  Comparar tamaños (Binario)\n");
-        printf("11.  Comparar tamaños (Caracteres)\n\n");
-        printf("12.  Estadisticas de Compresión\n");
-        printf("13.  Estadisticas de Protección\n");
+        printf("9.   Comparar archivos protegidos\n");
+        printf("10.   Comparar tamaños (Hexadecimal)\n");
+        printf("11.  Comparar tamaños (Binario)\n");
+        printf("12.  Comparar tamaños (Caracteres)\n\n");
+        printf("13.  Estadisticas de Compresión\n");
+        printf("14.  Estadisticas de Protección\n");
         printf("0.  Salir\n");
         printf("Seleccione una opcion: ");
         scanf("%d", &choice);
@@ -57,119 +121,146 @@ int main() {
             // HUFFMAN
             case 1:
                 printf("Ingrese el nombre del archivo a comprimir: \n");
-                scanf("%s", input_filename);
-                strcpy(input_filename_noExtension, input_filename);
-                input_filename_noExtension[strlen(input_filename) - 4] = '\0';
-                sprintf(output_filename, "%s.huf", input_filename_noExtension);
+            scanf("%s", input_filename);
+            strcpy(input_filename_noExtension, input_filename);
+            input_filename_noExtension[strlen(input_filename) - 4] = '\0';
+            sprintf(output_filename, "%s.huf", input_filename_noExtension);
 
-                if (comprimir_huffman(input_filename, output_filename) == 0)
-                    printf("Archivo comprimido creado como: %s\n", output_filename);
+            if (comprimir_huffman(input_filename, output_filename) == 0)
+                printf("Archivo comprimido creado como: %s\n", output_filename);
 
-                break;
+            break;
             case 2:
                 printf("Ingrese el nombre del archivo a descomprimir: \n");
-                scanf("%s", input_filename);
-                strcpy(input_filename_noExtension, input_filename);
-                input_filename_noExtension[strlen(input_filename) - 4] = '\0';
-                sprintf(output_filename, "%s-decompressed.txt", input_filename_noExtension);
+            scanf("%s", input_filename);
+            strcpy(input_filename_noExtension, input_filename);
+            input_filename_noExtension[strlen(input_filename) - 4] = '\0';
+            sprintf(output_filename, "%s-decompressed.txt", input_filename_noExtension);
 
-                if (descomprimir_huffman(input_filename, output_filename) == 0)
-                    printf("Archivo descomprimido creado como: %s\n", output_filename);
+            if (descomprimir_huffman(input_filename, output_filename) == 0)
+                printf("Archivo descomprimido creado como: %s\n", output_filename);
 
-                break;
+            break;
 
             // HAMMING
             case 3:
                 printf("Ingrese el nombre del archivo a proteger: ");
-                scanf("%s", input_filename);
-                printf("Ingrese el tama%co de bloque\n1: 8 bits\n2: 4096 bits\n3: 65536 bits\n",164);
-                scanf("%d", &block_size);
+            scanf("%s", input_filename);
+            printf("Ingrese el tama%co de bloque\n1: 8 bits\n2: 4096 bits\n3: 65536 bits\n",164);
+            scanf("%d", &block_size);
 
-                // Calcular lugar en donde poner el fin de string, para omitir la extension al guardarlo
-                strcpy(input_filename_noExtension,input_filename);
-                input_filename_noExtension[strlen(input_filename)-4]='\0';
+            // Calcular lugar en donde poner el fin de string, para omitir la extension al guardarlo
+            strcpy(input_filename_noExtension,input_filename);
+            input_filename_noExtension[strlen(input_filename)-4]='\0';
 
 
-                sprintf(output_filename, "%s.HA%d", input_filename_noExtension, block_size);
+            sprintf(output_filename, "%s.HA%d", input_filename_noExtension, block_size);
 
-                if(protect_file(input_filename, getBlockSizeByIndex(block_size), output_filename) == 0)
-                    printf("Archivo protegido creado como: %s\n", output_filename);
-                break;
+            if(protect_file(input_filename, getBlockSizeByIndex(block_size), output_filename) == 0)
+                printf("Archivo protegido creado como: %s\n", output_filename);
+            break;
             case 4:
                 printf("Ingrese el nombre del archivo a introducir errores: ");
-                scanf("%s", input_filename);
+            scanf("%s", input_filename);
 
-                // Calcular lugar en donde poner el fin de string, para omitir la extension al guardarlo
-                strcpy(input_filename_noExtension,input_filename);
-                input_filename_noExtension[strlen(input_filename)-4]='\0';
+            // Calcular lugar en donde poner el fin de string, para omitir la extension al guardarlo
+            strcpy(input_filename_noExtension,input_filename);
+            input_filename_noExtension[strlen(input_filename)-4]='\0';
 
 
-                sprintf(output_filename, "%s.HE", input_filename_noExtension);
-                introduce_errors(input_filename, output_filename);
-                printf("Archivo con errores creado como: %s\n", output_filename);
-                break;
+            sprintf(output_filename, "%s.HE", input_filename_noExtension);
+            introduce_errors(input_filename, output_filename);
+            printf("Archivo con errores creado como: %s\n", output_filename);
+            break;
             case 5:
                 printf("Ingrese el nombre del archivo a introducir los dos errores: ");
-                scanf("%s", input_filename);
+            scanf("%s", input_filename);
 
-                // Calcular lugar en donde poner el fin de string, para omitir la extension al guardarlo
-                strcpy(input_filename_noExtension,input_filename);
-                input_filename_noExtension[strlen(input_filename)-4]='\0';
+            // Calcular lugar en donde poner el fin de string, para omitir la extension al guardarlo
+            strcpy(input_filename_noExtension,input_filename);
+            input_filename_noExtension[strlen(input_filename)-4]='\0';
 
 
-                sprintf(output_filename, "%s.HE", input_filename_noExtension);
-                introduce_two_errors(input_filename, output_filename);
-                printf("Archivo con errores creado como: %s\n", output_filename);
-                break;
+            sprintf(output_filename, "%s.HE", input_filename_noExtension);
+            introduce_two_errors(input_filename, output_filename);
+            printf("Archivo con errores creado como: %s\n", output_filename);
+            break;
             case 6:
                 printf("Ingrese el nombre del archivo a decodificar sin corregir errores: ");
-                scanf("%s", input_filename);
-                //printf("Ingrese el tamaño de bloque (8, 4096, 65536 bits): ");
-                //scanf("%d", &block_size);
-                block_size = getBlockSizeByExtension(input_filename);
-                // Calcular lugar en donde poner el fin de string, para omitir la extension al guardarlo
-                strcpy(input_filename_noExtension,input_filename);
-                input_filename_noExtension[strlen(input_filename)-4]='\0';
+            scanf("%s", input_filename);
+            //printf("Ingrese el tamaño de bloque (8, 4096, 65536 bits): ");
+            //scanf("%d", &block_size);
+            block_size = getBlockSizeByExtension(input_filename);
+            // Calcular lugar en donde poner el fin de string, para omitir la extension al guardarlo
+            strcpy(input_filename_noExtension,input_filename);
+            input_filename_noExtension[strlen(input_filename)-4]='\0';
 
-                sprintf(output_filename, "%s.DE%d", input_filename_noExtension,getIndexForExtension(block_size));
+            sprintf(output_filename, "%s.DE%d", input_filename_noExtension,getIndexForExtension(block_size));
 
-                decode_file(input_filename, output_filename, block_size, 0);
-                printf("Archivo decodificado sin corrección creado como: %s\n", output_filename);
-                break;
+            decode_file(input_filename, output_filename, block_size, 0);
+            printf("Archivo decodificado sin corrección creado como: %s\n", output_filename);
+            break;
             case 7:
                 printf("Ingrese el nombre del archivo a decodificar corrigiendo errores: ");
-                scanf("%s", input_filename);
+            scanf("%s", input_filename);
 
-                block_size = getBlockSizeByExtension(input_filename);
-                // Calcular lugar en donde poner el fin de string, para omitir la extension al guardarlo
-                strcpy(input_filename_noExtension,input_filename);
-                input_filename_noExtension[strlen(input_filename)-4]='\0';
-                sprintf(output_filename, "%s.DEC", input_filename);
-                input_filename_noExtension[strlen(input_filename)-4]='\0';
+            block_size = getBlockSizeByExtension(input_filename);
+            // Calcular lugar en donde poner el fin de string, para omitir la extension al guardarlo
+            strcpy(input_filename_noExtension,input_filename);
+            input_filename_noExtension[strlen(input_filename)-4]='\0';
+            sprintf(output_filename, "%s.DEC", input_filename);
+            input_filename_noExtension[strlen(input_filename)-4]='\0';
 
-                sprintf(output_filename, "%s.DC%d", input_filename_noExtension,getIndexForExtension(block_size));
+            sprintf(output_filename, "%s.DC%d", input_filename_noExtension,getIndexForExtension(block_size));
 
-                decode_file(input_filename, output_filename, block_size, 1);
-                printf("Archivo decodificado con corrección creado como: %s\n", output_filename);
-                break;
+            decode_file(input_filename, output_filename, block_size, 1);
+            printf("Archivo decodificado con corrección creado como: %s\n", output_filename);
+            break;
 
             // ESTADISTICAS
             // Mostrar contenido archivo
             case 8:
                 printf("Ingrese el nombre del archivo: ");
-                scanf("%255s", input_filename);
+            scanf("%255s", input_filename);
 
-                size_t size;
-                char *content = load_file(input_filename, &size);
-                if (content) {
-                    printf("Contenido del archivo (tamaño: %zu):\n", size);
-                    printf("%s\n", content);
-                    free(content);
-                } else {
-                    printf("Error al cargar el archivo.\n");
+            size_t size;
+            char *content = load_file(input_filename, &size);
+            if (content) {
+                printf("Contenido del archivo (tamaño: %zu):\n", size);
+                printf("%s\n", content);
+                free(content);
+            } else {
+                printf("Error al cargar el archivo.\n");
+            }
+            break;
+            case 9: {
+                printf("Ingrese el nombre del archivo original: ");
+                scanf("%s", input_filename);
+                size_t original_size;
+                char *original_content = load_file(input_filename, &original_size);
+                if (!original_content) {
+                    printf("Error al cargar el archivo original.\n");
+                    break;
                 }
+
+                printf("Ingrese el nombre del archivo protegido con errores a comparar: ");
+                scanf("%s", output_filename);
+                size_t compressed_size;
+                char *compressed_content = load_file(output_filename, &compressed_size);
+
+                if (!compressed_content) {
+                    printf("Error al cargar el archivo protegido .\n");
+                    free(original_content);
+                    break;
+                }
+                block_size = getBlockSizeByExtension(input_filename);
+                show_files_in_console_protected(original_content, original_size, compressed_content, compressed_size,block_size);
+
+                free(original_content);
+                free(compressed_content);
                 break;
-            case 9:
+            }
+            case 10:{
                 printf("Ingrese el nombre del archivo original: ");
                 scanf("%s", input_filename);
                 size_t original_size;
@@ -195,7 +286,8 @@ int main() {
                 free(original_content);
                 free(compressed_content);
                 break;
-            case 10:
+             }
+            case 11:
                 printf("Ingrese el nombre del archivo original: ");
                 scanf("%s", input_filename);
                 size_t original_size_bin;
@@ -220,7 +312,7 @@ int main() {
                 free(original_content_bin);
                 free(compressed_content_bin);
                 break;
-            case 11:
+            case 12:
                 printf("Ingrese el nombre del archivo original: ");
                 scanf("%s", input_filename);
                 size_t original_size_char;
@@ -245,7 +337,7 @@ int main() {
                 free(original_content_char);
                 free(compressed_content_char);
                 break;
-            case 12:
+            case 13:
                 printf("Ingrese el nombre del archivo original: ");
                 scanf("%s", input_filename);
                 size_t original_size_comp;
@@ -269,7 +361,7 @@ int main() {
                 free(original_content_comp);
                 free(compressed_content_comp);
                 break;
-            case 13:
+            case 14:
                 printf("Ingrese el nombre del archivo original: ");
             scanf("%s", input_filename);
             size_t original_size_prot;
