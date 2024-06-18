@@ -6,6 +6,9 @@
 #define RED "\033[31m"
 #define GREEN "\033[32m"
 #define RESET "\033[0m"
+#include <ctype.h>
+#include <unistd.h>
+#include <windows.h>
 
 
 char *load_file(const char *filename, size_t *size) {
@@ -56,7 +59,7 @@ char *load_file2(const char *filename, size_t *size) {
     fread(buffer + sizeof(size_t), 1, *size, file);
     buffer[total_size - 1] = '\0'; // Para el manejo de cadenas
 
-    // Copiar el tamaño del archivo al principio del buffer
+    // Copiar el Size del archivo al principio del buffer
     memcpy(buffer, size, sizeof(size_t));
 
     fclose(file);
@@ -223,10 +226,10 @@ void print_size(size_t size) {
 
 void calculate_compression_statistics(size_t original_size, size_t compressed_size) {
     double compression_ratio = (double)compressed_size / original_size * 100;
-    printf("Tamaño original: ");
+    printf("Size original: ");
     print_size(original_size);
     printf("\n");
-    printf("Tamaño comprimido: ");
+    printf("Size comprimido: ");
     print_size(compressed_size);
     printf("\n");
     printf("Ratio de compresión: %.2f%%\n", compression_ratio);
@@ -234,68 +237,228 @@ void calculate_compression_statistics(size_t original_size, size_t compressed_si
 
 void calculate_protection_statistics(size_t original_size, size_t protected_size) {
     double overhead = (double)protected_size / original_size * 100;
-    printf("Tamaño original: ");
+    printf("Size original: ");
     print_size(original_size);
     printf("\n");
-    printf("Tamaño protegido: ");
+    printf("Size protegido: ");
     print_size(protected_size);
     printf("\n");
     printf("Sobrecarga de protección: %.2f%%\n", overhead);
 }
-// Función para mostrar contenido en formato binario
-void print_binary(const char* data, size_t size) {
-    for (size_t i = 0; i < size; i++) {
-        for (int bit = 7; bit >= 0; --bit) {
-            printf("%c", (data[i] & (1 << bit)) ? '1' : '0');
+void print_binary_with_diff(const char* file1Content, size_t file1Size, const char* file2Content, size_t file2Size, int lineLength) {
+    size_t maxSize = file1Size > file2Size ? file1Size : file2Size;
+    char *outputBuffer = (char*)malloc(lineLength * 20 * 2 + 4024); // Buffer para la salida combinada
+    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD written;
+    long totalDifferences = 0;
+
+    for (size_t i = 0; i < maxSize; i += lineLength) {
+        size_t posOut = 0;
+        long found_difference = 0;
+
+        // Construir la primera línea con diferencias en verde
+        for (size_t j = i; j < i + lineLength && j < file1Size; j++) {
+            for (int bit = 7; bit >= 0; --bit) {
+                if (j < file2Size && ((file1Content[j] & (1 << bit)) != (file2Content[j] & (1 << bit)))) {
+                    posOut += sprintf(outputBuffer + posOut, GREEN "%c" RESET, (file1Content[j] & (1 << bit)) ? '1' : '0');
+                    found_difference = 1;
+                    totalDifferences++;
+                } else {
+                    posOut += sprintf(outputBuffer + posOut, "%c", (file1Content[j] & (1 << bit)) ? '1' : '0');
+                }
+            }
+            posOut += sprintf(outputBuffer + posOut, " ");
         }
-        printf(" ");
-        if ((i + 1) % 6 == 0)
-            printf("\n");
+        if (i + lineLength > file1Size) {
+            for (size_t j = 0; j < (i + lineLength - file1Size); j++) {
+                posOut += sprintf(outputBuffer + posOut, "         ");
+            }
+        }
+        posOut += sprintf(outputBuffer + posOut, "    ");
+
+        // Construir la segunda línea con diferencias en rojo
+        for (size_t j = i; j < i + lineLength && j < file2Size; j++) {
+            for (int bit = 7; bit >= 0; --bit) {
+                if (j < file1Size && ((file1Content[j] & (1 << bit)) != (file2Content[j] & (1 << bit)))) {
+                    posOut += sprintf(outputBuffer + posOut, RED "%c" RESET, (file2Content[j] & (1 << bit)) ? '1' : '0');
+                } else {
+                    posOut += sprintf(outputBuffer + posOut, "%c", (file2Content[j] & (1 << bit)) ? '1' : '0');
+                }
+            }
+            posOut += sprintf(outputBuffer + posOut, " ");
+        }
+        posOut += sprintf(outputBuffer + posOut, "\n");
+
+        if (found_difference) {
+            for (int it = 0; it < lineLength * 2 + 3; it++) {
+                outputBuffer[posOut++] = '-';
+            }
+            outputBuffer[posOut++] = '\n';
+        }
+
+        // Escribir la línea de salida combinada
+        WriteFile(hStdout, outputBuffer, posOut, &written, NULL);
     }
+
+    // Imprimir Size de archivos y diferencias
+    printf(GREEN "Size del archivo 1: %zu bytes\n" RESET, file1Size);
+    printf(RED "Size del archivo 2: %zu bytes\n" RESET, file2Size);
+    printf("Diferencias encontradas: %ld\n", totalDifferences);
+
     printf("\n");
+    free(outputBuffer);
+}
+void print_chars_with_diff(const char* file1Content, size_t file1Size, const char* file2Content, size_t file2Size, int lineLength) {
+    size_t maxSize = file1Size > file2Size ? file1Size : file2Size;
+    char *lineBuffer1 = (char*)malloc(lineLength * 20 * 2 + 4024); // Buffer para la primera línea (considerando los códigos de color)
+    char *lineBuffer2 = (char*)malloc(lineLength * 20 * 2 + 4024); // Buffer para la segunda línea
+    char *outputBuffer = (char*)malloc(lineLength * 20 * 2 + 4024); // Buffer para la salida combinada
+    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD written;
+    int totalDifferences = 0;
+
+    for (size_t i = 0; i < maxSize; i += lineLength) {
+        int found_difference = 0;
+        size_t pos1 = 0, pos2 = 0, posOut = 0;
+
+        // Construir la primera línea con diferencias en verde
+        for (size_t j = 0; j < lineLength; j++) {
+            if ((i + j) < file1Size) {
+                if ((i + j) < file2Size && file1Content[i + j] != file2Content[i + j]) {
+                    memcpy(lineBuffer1 + pos1, GREEN, strlen(GREEN));
+                    pos1 += strlen(GREEN);
+                    lineBuffer1[pos1++] = isprint((unsigned char)file1Content[i + j]) ? file1Content[i + j] : ' ';
+                    memcpy(lineBuffer1 + pos1, RESET, strlen(RESET));
+                    pos1 += strlen(RESET);
+                    found_difference = 1;
+                    totalDifferences++;
+                } else {
+                    lineBuffer1[pos1++] = isprint((unsigned char)file1Content[i + j]) ? file1Content[i + j] : ' ';
+                }
+            } else {
+                lineBuffer1[pos1++] = ' ';
+            }
+        }
+        lineBuffer1[pos1] = '\0';
+
+        // Construir la segunda línea con diferencias en rojo
+        for (size_t j = 0; j < lineLength; j++) {
+            if ((i + j) < file2Size) {
+                if ((i + j) < file1Size && file1Content[i + j] != file2Content[i + j]) {
+                    memcpy(lineBuffer2 + pos2, RED, strlen(RED));
+                    pos2 += strlen(RED);
+                    lineBuffer2[pos2++] = isprint((unsigned char)file2Content[i + j]) ? file2Content[i + j] : ' ';
+                    memcpy(lineBuffer2 + pos2, RESET, strlen(RESET));
+                    pos2 += strlen(RESET);
+                } else {
+                    lineBuffer2[pos2++] = isprint((unsigned char)file2Content[i + j]) ? file2Content[i + j] : ' ';
+                }
+            } else {
+                lineBuffer2[pos2++] = ' ';
+            }
+        }
+        lineBuffer2[pos2] = '\0';
+
+        // Construir la línea de salida combinada
+        posOut += sprintf(outputBuffer + posOut, "%s    %s\n", lineBuffer1, lineBuffer2);
+
+        if (found_difference) {
+            //Sleep(100);  // Pausar por 100 ms
+            for (int it = 0; it < lineLength * 2 + 3; it++) outputBuffer[posOut++] = '-';
+            outputBuffer[posOut++] = '\n';
+        }
+
+        // Escribir la línea de salida combinada
+        WriteFile(hStdout, outputBuffer, posOut, &written, NULL);
+    }
+
+    // Imprimir Size de archivos y diferencias
+    printf(GREEN "Size del archivo 1: %zu bytes\n" RESET, file1Size);
+    printf(RED "Size del archivo 2: %zu bytes\n" RESET, file2Size);
+    printf("Diferencias encontradas: %d\n", totalDifferences);
+
+    free(lineBuffer1);
+    free(lineBuffer2);
+    free(outputBuffer);
 }
 
-// Función para mostrar contenido en formato de caracteres
-void print_chars(const char* data, size_t size) {
-    for (size_t i = 0; i < size; i++) {
-        printf("%c", data[i]);
+
+void print_hex_with_diff(const char* file1Content, size_t file1Size, const char* file2Content, size_t file2Size, int lineLength) {
+    size_t maxSize = file1Size > file2Size ? file1Size : file2Size;
+    char *outputBuffer = (char*)malloc(lineLength * 20 * 2 + 4024); // Buffer para la salida combinada
+    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD written;
+    int totalDifferences = 0;
+
+    for (size_t i = 0; i < maxSize; i += lineLength) {
+        size_t posOut = 0;
+        int found_difference = 0;
+
+        // Construir la primera línea con diferencias en verde
+        for (size_t j = i; j < i + lineLength && j < file1Size; j++) {
+            if (j < file2Size && file1Content[j] != file2Content[j]) {
+                posOut += sprintf(outputBuffer + posOut, GREEN "%02x " RESET, (unsigned char)file1Content[j]);
+                found_difference = 1;
+                totalDifferences++;
+            } else {
+                posOut += sprintf(outputBuffer + posOut, "%02x ", (unsigned char)file1Content[j]);
+            }
+        }
+        if (i + lineLength > file1Size) {
+            for (size_t j = 0; j < (i + lineLength - file1Size); j++) {
+                posOut += sprintf(outputBuffer + posOut, "   ");
+            }
+        }
+        posOut += sprintf(outputBuffer + posOut, "    ");
+
+        // Construir la segunda línea con diferencias en rojo
+        for (size_t j = i; j < i + lineLength && j < file2Size; j++) {
+            if (j < file1Size && file1Content[j] != file2Content[j]) {
+                posOut += sprintf(outputBuffer + posOut, RED "%02x " RESET, (unsigned char)file2Content[j]);
+            } else {
+                posOut += sprintf(outputBuffer + posOut, "%02x ", (unsigned char)file2Content[j]);
+            }
+        }
+        posOut += sprintf(outputBuffer + posOut, "\n");
+
+        if (found_difference) {
+            for (int it = 0; it < lineLength * 2 + 3; it++) {
+                outputBuffer[posOut++] = '-';
+            }
+            outputBuffer[posOut++] = '\n';
+        }
+
+        // Escribir la línea de salida combinada
+        WriteFile(hStdout, outputBuffer, posOut, &written, NULL);
     }
+
+    // Imprimir Size de archivos y diferencias
+    printf(GREEN "Size del archivo 1: %zu bytes\n" RESET, file1Size);
+    printf(RED "Size del archivo 2: %zu bytes\n" RESET, file2Size);
+    printf("Diferencias encontradas: %d\n", totalDifferences);
+
     printf("\n");
+    free(outputBuffer);
 }
-// Función para mostrar contenido en formato hexadecimal
-void print_hex(const char* data, size_t size) {
-    for (size_t i = 0; i < size; i++) {
-        printf("%02x ", (unsigned char)data[i]);
-        if ((i + 1) % 16 == 0)
-            printf("\n");
-    }
-    printf("\n");
-}
-// Función para mostrar contenido de dos archivos en la consola en hexadecimal
+
+
 void show_files_in_console_hex(const char* file1Content, size_t file1Size, const char* file2Content, size_t file2Size) {
-    printf(RED "Archivo Original (Hexadecimal):\n" RESET);
-    print_hex(file1Content, file1Size);
-
-    printf(GREEN "Archivo Comprimido (Hexadecimal):\n" RESET);
-    print_hex(file2Content, file2Size);
+    printf(GREEN "Archivo Original (Hexadecimal):                    ");
+    printf(RED "Archivo Comprimido (Hexadecimal):\n" RESET);
+    print_hex_with_diff(file1Content, file1Size, file2Content, file2Size,15);
 }
 
-// Función para mostrar contenido de dos archivos en la consola en binario
 void show_files_in_console_binary(const char* file1Content, size_t file1Size, const char* file2Content, size_t file2Size) {
-    printf(RED "Archivo Original (Binario):\n" RESET);
-    print_binary(file1Content, file1Size);
-
-    printf(GREEN "Archivo Comprimido (Binario):\n" RESET);
-    print_binary(file2Content, file2Size);
+    printf(GREEN "Archivo Original (Binario):                        ");
+    printf(RED "Archivo Comprimido (Binario):\n" RESET);
+    print_binary_with_diff(file1Content, file1Size, file2Content, file2Size,6);
 }
 
-// Función para mostrar contenido de dos archivos en la consola en caracteres
 void show_files_in_console_chars(const char* file1Content, size_t file1Size, const char* file2Content, size_t file2Size) {
-    printf(RED "Archivo Original (Caracteres):\n" RESET);
-    print_chars(file1Content, file1Size);
+    printf(GREEN "Archivo Original (Caracteres):                     ");
+    printf(RED "Archivo Comprimido (Caracteres):\n" RESET);
+    print_chars_with_diff(file1Content, file1Size, file2Content, file2Size,50);
 
-    printf(GREEN "Archivo Comprimido (Caracteres):\n" RESET);
-    print_chars(file2Content, file2Size);
 }
 
 // Crea los nombres para los archivos de salida con una extension especificada
@@ -448,3 +611,52 @@ void show_files_in_console_protected(char *original_content, size_t size, char *
     free(original_errors);
     free(compressed_errors);
 }
+
+/*
+void print_chars_with_diff(const char* file1Content, size_t file1Size, const char* file2Content, size_t file2Size, int lineLength) {
+    size_t maxSize = file1Size > file2Size ? file1Size : file2Size;
+
+    for (size_t i = 0; i < maxSize; i += lineLength) {
+        int found_difference = 0;
+
+        // Imprimir la primera línea con diferencias en verde
+        for (size_t j = 0; j < lineLength; j++) {
+            if ((i + j) < file1Size) {
+                if ((i + j) < file2Size && file1Content[i + j] != file2Content[i + j]) {
+                    printf(GREEN "%c" RESET, isprint((unsigned char)file1Content[i + j]) ? file1Content[i + j] : ' ');
+                    found_difference = 1;
+                } else {
+                    printf("%c", isprint((unsigned char)file1Content[i + j]) ? file1Content[i + j] : ' ');
+                }
+            } else {
+                printf(" ");
+            }
+        }
+
+        printf("    ");  // Espacio entre las dos columnas
+
+        // Imprimir la segunda línea con diferencias en rojo
+        for (size_t j = 0; j < lineLength; j++) {
+            if ((i + j) < file2Size) {
+                if ((i + j) < file1Size && file1Content[i + j] != file2Content[i + j]) {
+                    printf(RED "%c" RESET, isprint((unsigned char)file2Content[i + j]) ? file2Content[i + j] : ' ');
+                    found_difference = 1;
+                } else {
+                    printf("%c", isprint((unsigned char)file2Content[i + j]) ? file2Content[i + j] : ' ');
+                }
+            } else {
+                printf(" ");
+            }
+        }
+
+        printf("\n");
+
+        if (found_difference) {
+            Sleep(100);  // Pausar por medio segundo
+            for(int it = 0; it<lineLength*2+3;it++)printf("-");  // Imprimir línea de guiones
+            printf("\n");
+        }
+    }
+
+    printf("\n");
+}*/

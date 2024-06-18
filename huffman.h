@@ -1,9 +1,35 @@
+
+#ifndef HUFFMAN_H
+#define HUFFMAN_H
+
 #include <time.h>
 
 #include "minheap.h"
 #include "utilidades.h"
 #include "huffmanops.h"
 #define MAX_FILENAME 256
+#include <pthread.h>
+#include <stdbool.h>
+#include <unistd.h>
+#define RED "\033[31m"
+#define GREEN "\033[32m"
+#define RESET "\033[0m"
+#define BLUE "\x1B[34m"
+
+
+volatile bool loading = 1;
+void *loader(void *arg) {
+    const char spinner[] = "\\|/-";
+    int i = 0;
+    while (loading) {
+        printf("\r" BLUE "Cargando... %c" RESET, spinner[i++ % 4]);
+        fflush(stdout);
+        usleep(100000); // 100 ms
+    }
+    printf("\r" GREEN "Cargando... Completado!\n" RESET);
+    return NULL;
+}
+
 char* decompress_binary(char* data, size_t size, int validBitsInLastByte, MinHeapNode* root, int *finalSize) {
     MinHeapNode* search = root;
     int bitIndex = 0;
@@ -39,51 +65,58 @@ char* decompress_binary(char* data, size_t size, int validBitsInLastByte, MinHea
 }
 
 int comprimir_huffman(char* input_filename, char* output_filename) {
+    printf("Iniciando compresion!\n");
+    pthread_t loader_thread;
+    pthread_create(&loader_thread, NULL, loader, NULL);
+
     size_t size;
     char *data = load_file(input_filename, &size); // Carga los datos a codificar
-    if (!data) return 1;
+    if (!data) {
+        loading = false;
+        pthread_join(loader_thread, NULL);
+        return 1;
+    }
 
     FILE *out = fopen(output_filename, "wb");
     if (!out) {
         perror("Error al crear el archivo decodificado\n");
+        loading = false;
+        pthread_join(loader_thread, NULL);
         free(data);
         return 2;
     }
 
-    clock_t start_time, end_time;
-    double elapsed_time;
-
     // Calcular tabla de frecuencias
-    start_time = clock();
     char c[256];
     int freq[256];
     int tam = calculateFrequencyTable(data,size, c, freq);
-    end_time = clock();
-    elapsed_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
-    printf("Tiempo para calcular la tabla de frecuencias: %f segundos\n", elapsed_time);
+
 
     // Construcción del árbol de Huffman
-    start_time = clock();
+
     MinHeapNode* huffmanTreeRoot = HuffmanCodes(c, freq, tam);
-    end_time = clock();
-    elapsed_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
-    printf("Tiempo para construir el árbol de Huffman: %f segundos\n", elapsed_time);
+
 
     // Creación de la tabla de Huffman
-    start_time = clock();
+
     char compressionTable[256][MAX_TREE_HT];
     memset(compressionTable, 0, sizeof(char) * 256 * MAX_TREE_HT);
 
     char arr[MAX_TREE_HT]; // Armar pequeño acumulador para los códigos obtenidos en el barrido del árbol de Huffman
     int top = 0;
     createHuffmanTable(huffmanTreeRoot, arr, top, compressionTable);
-    end_time = clock();
-    elapsed_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
-    printf("Tiempo para crear la tabla de Huffman: %f segundos\n", elapsed_time);
+
 
     // Compresión del mensaje
-    start_time = clock();
+
     char* compressedMsj = malloc(sizeof(char) * size * MAX_TREE_HT);
+    if(compressedMsj==NULL) {
+        printf("No se pudo alocar la memoria...");
+        loading = false;
+        pthread_join(loader_thread, NULL);
+        free(data);
+        return 1;
+    }
     size_t compressedMsjIndex = 0;
 
     for (int i = 0; i < size; i++) {
@@ -92,22 +125,18 @@ int comprimir_huffman(char* input_filename, char* output_filename) {
         compressedMsjIndex += len;
     }
     compressedMsj[compressedMsjIndex] = '\0'; // Terminar la cadena
-    end_time = clock();
-    elapsed_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
-    printf("Tiempo para comprimir el mensaje: %f segundos\n", elapsed_time);
+
 
     // Creación del árbol en orden
-    start_time = clock();
+
     huffmanData inorder[256];
     int tamano = 0;
 
     createInorderTree(huffmanTreeRoot, inorder, &tamano);
-    end_time = clock();
-    elapsed_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
-    printf("Tiempo para crear el árbol en orden: %f segundos\n", elapsed_time);
+
 
     // Escritura del archivo comprimido
-    start_time = clock();
+
     fwrite(&tamano, sizeof(int), 1, out);
     fwrite(inorder, sizeof(huffmanData), tamano, out); // escribe el array en un archivo
 
@@ -120,9 +149,7 @@ int comprimir_huffman(char* input_filename, char* output_filename) {
     // Escribir la cantidad de bits válidos en el último byte del archivo
     fwrite(&validBitsInLastByte, sizeof(int), 1, out);
     fwrite(binaryData, sizeof(char), binarySize, out);
-    end_time = clock();
-    elapsed_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
-    printf("Tiempo para escribir el archivo comprimido: %f segundos\n", elapsed_time);
+
 
     // Liberar memoria y cerrar archivos
     free(binaryData);
@@ -131,6 +158,8 @@ int comprimir_huffman(char* input_filename, char* output_filename) {
     free(compressedMsj);
     fclose(out);
 
+    loading = false;
+    pthread_join(loader_thread, NULL);
     return 0;
 }
 
@@ -139,26 +168,33 @@ int comprimir_huffman(char* input_filename, char* output_filename) {
 
 int descomprimir_huffman(char* input_filename, char* output_filename) {
     FILE* in = fopen(input_filename, "rb");
-    printf("Iniciando descompresion\n");
+    printf("Iniciando descompresion!\n");
+    pthread_t loader_thread;
+    pthread_create(&loader_thread, NULL, loader, NULL);
+
     if (!in) {
+        loading = false;
+        pthread_join(loader_thread, NULL);
         perror("Error al abrir el archivo de entrada");
         return 1;
     }
-    printf("Se abrio el archivo de entrada\n");
+
     int tamano;
     fread(&tamano, sizeof(int), 1, in); // Leer el tamaño del array inorder
 
     huffmanData* inorder = (huffmanData*)malloc(tamano * sizeof(huffmanData));
     if (!inorder) {
         perror("Error al asignar memoria");
+        loading = false;
+        pthread_join(loader_thread, NULL);
         fclose(in);
         return 2;
     }
-    printf("Se asigno la memoria: %d\n", tamano);
+
 
 
     fread(inorder, sizeof(huffmanData), tamano, in); // Leer el array inorder
-    printf("Inorder leido\n");
+    printf("\nInorder leido");
 
     /*printHuffmanData(inorder,tamano);*/
     // Reconstruir el árbol de Huffman a partir del array inorder
@@ -176,7 +212,9 @@ int descomprimir_huffman(char* input_filename, char* output_filename) {
     fseek(in, sizeof(int) + (tamano * sizeof(huffmanData)) + sizeof(int), SEEK_SET);
 
     char* compressedData = (char*)malloc(fileSize + 1);
-    if (!compressedData) {
+    if (compressedData==NULL) {
+        loading = false;
+        pthread_join(loader_thread, NULL);
         perror("Error al asignar memoria");
         free(inorder);
         freeHuffmanTree(huffmanTreeRoot);
@@ -194,7 +232,9 @@ int descomprimir_huffman(char* input_filename, char* output_filename) {
 
     // Escribir el mensaje descomprimido en el archivo de salida
     FILE* out = fopen(output_filename, "wb");
-    if (!out) {
+    if (out==NULL) {
+        loading = false;
+        pthread_join(loader_thread, NULL);
         perror("Error al crear el archivo de salida");
         free(compressedData);
         free(decompressedMessage);
@@ -213,5 +253,8 @@ int descomprimir_huffman(char* input_filename, char* output_filename) {
     free(decompressedMessage);
     free(inorder);
     freeHuffmanTree(huffmanTreeRoot);
+    loading = false;
+    pthread_join(loader_thread, NULL);
     return 0;
 }
+#endif HUFFMAN_H

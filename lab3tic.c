@@ -44,7 +44,7 @@ int main() {
         printf("[ESTADISTICAS]\n");
         printf("8.   Mostrar contenido archivo\n");
         printf("9.   Comparar archivos protegidos\n");
-        printf("10.   Comparar tamaños (Hexadecimal)\n");
+        printf("10.  Comparar tamaños (Hexadecimal)\n");
         printf("11.  Comparar tamaños (Binario)\n");
         printf("12.  Comparar tamaños (Caracteres)\n\n");
         printf("13.  Estadisticas de Compresión\n");

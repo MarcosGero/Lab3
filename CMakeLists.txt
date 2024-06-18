@@ -10,3 +10,5 @@ add_executable(Lab3 lab3tic.c
         minheap.h
         utilidades.h
         huffman.h)
+
+target_link_libraries(Lab3 winmm)
