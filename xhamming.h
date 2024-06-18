@@ -1,9 +1,12 @@
+#pragma once
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
-
+#include <pthread.h>
+#include <unistd.h>
 
 #define MAX_FILENAME 256
 
@@ -47,100 +50,92 @@ size_t calcularNullRestantes(size_t size, size_t block_size){
     return block_size - (size % block_size);
 }
 
-// Función para proteger el archivo usando el código de Hamming
+
+volatile int loading = 1;
+
+void *loader(void *arg) {
+    const char spinner[] = "\\|/-";
+    int i = 0;
+    while (loading) {
+        printf("\rCargando... %c", spinner[i++ % 4]);
+        fflush(stdout);
+        usleep(100000); // 100 ms
+    }
+    printf("\rCargando... Completado!\n");
+    return NULL;
+}
+
 int protect_file(const char *input_filename, int data_size, const char *output_filename) {
+    pthread_t loader_thread;
+    pthread_create(&loader_thread, NULL, loader, NULL);
+
     size_t size;
     char *data = load_file2(input_filename, &size); // Carga los datos a codificar
-    if (!data) return 1;
-
-
-
+    if (!data) {
+        loading = 0;
+        pthread_join(loader_thread, NULL);
+        return 1;
+    }
 
     // INICIO SHIFTEO MENSAJE
-    // Insertar tamaño del mensaje al principio del mensaje original
-    size_t oldSize = size; // Acá deberia estar la cantidad de NULL que nos faltan (pienso usar modulo)
-
-
+    size_t oldSize = size;
     size = size + sizeof(size_t);
-    // El size que se usa en la funcion de abajo es el size_t que va a estar adelante del mensaje
-
-
-//    oldSize = calcularNullRestantes(oldSize,(size_t) (data_size/8));
-    printf("Size a Guardar: %d\n",oldSize);
-
-
-
-//    printBlock(data,size);
-    // FIN SHIFTEO MENSAJE (falta verificar si el mensaje final queda bien)
-
-
+    printf("\nSize a Guardar: %d", oldSize);
 
     size_t total_bits = size * 8;
     int k = get_parity_bit_count(data_size);
     int n = data_size;
     int block_size = n + k + 1;
     int block_bytes = (block_size + 7) / 8;
-    printf("n, k: (%i, %i), blocksize: %i \n",n,k,block_size);
-    printf("total bits: %d\n",total_bits);
+    printf("\nn, k: (%i, %i), blocksize: %i ", n, k, block_size);
+    printf("\ntotal bits: %d\n", total_bits);
 
     // Preparar archivo de Salida
     FILE *out = fopen(output_filename, "wb");
     if (!out) {
         perror("Error creating protected file");
         free(data);
+        loading = 0;
+        pthread_join(loader_thread, NULL);
         return 2;
     }
 
     // Pide memoria para un unico bloque
-    printf("Block Size in Bytes: %d: \n",block_bytes);
-    char *block = malloc(block_bytes); // Pide espacio para un unico bloque que se reutilizará por cada iteracion de hamming
+    printf("\nBlock Size in Bytes: %d: \n", block_bytes);
+    char *block = malloc(block_bytes);
     if (!block) {
         perror("Memory allocation failed for block");
         fclose(out);
         free(data);
+        loading = 0;
+        pthread_join(loader_thread, NULL);
         return 3;
     }
 
-
-
-    // Aplicar Hamming a cada bloque
-    // Esto itera por cada cantidad
-    // de bits de info tenga el bloque de datos
-    // sin codificar, en cada iteracion
-    // se acomodan los bits de info en un nuevo bloque
-    // (de modo que los bits de control queden en cero), y se calculan los bits de hamming
     for (int i = 0; i < total_bits; i += n) {
-        memset(block, 0, block_bytes); // Limpiar el bloque antes de usarlo
-
+        memset(block, 0, block_bytes);
 
         int bitPosACopiar = 0;
+        for (int j = 0; j < n + k; j++) {
+            if (i + bitPosACopiar > size * 8) break;
 
-        for(int j = 0; j < n+k; j++){ // recorre all the bloque
-
-            if (i+bitPosACopiar>size*8) break;
-
-
-            if (!isPowerOfTwo(j+1)){
-                set_bit(block,j,get_bit(data,i+bitPosACopiar));
-                char *chartest = &data[i];
-              //  inspect_pointer(chartest);
+            if (!isPowerOfTwo(j + 1)) {
+                set_bit(block, j, get_bit(data, i + bitPosACopiar));
                 bitPosACopiar++;
             }
-
         }
 
         calculate_parity_bits(block, block_size, k);
-
-        calculate_block_parity(block,block_size);
-
-
-        fwrite(block, 1, block_bytes, out);  // Escribir bloque protegido
-        //printf("<Procesado bloque %d>\n",i/n);
+        calculate_block_parity(block, block_size);
+        fwrite(block, 1, block_bytes, out);
     }
 
     fclose(out);
     free(block);
     free(data);
+
+    loading = 0;
+    pthread_join(loader_thread, NULL);
     return 0;
 }
 

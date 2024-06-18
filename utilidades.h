@@ -7,6 +7,7 @@
 #define GREEN "\033[32m"
 #define RESET "\033[0m"
 
+
 char *load_file(const char *filename, size_t *size) {
     FILE *file = fopen(filename, "rb");
     if (!file) {
@@ -209,15 +210,7 @@ void convertToBinary(char* bits, char** binaryData, size_t* binarySize, int* val
         *validBitsInLastByte = 8; // Si no hay padding, todos los bits en el �ltimo byte son v�lidos
     }
 }
-// Función para mostrar contenido en formato hexadecimal
-void print_hex(const char* data, size_t size) {
-    for (size_t i = 0; i < size; i++) {
-        printf("%02x ", (unsigned char)data[i]);
-        if ((i + 1) % 16 == 0)
-            printf("\n");
-    }
-    printf("\n");
-}
+
 void print_size(size_t size) {
     if (size >= 1024 * 1024) {
         printf("%.2f MB", (double)size / (1024 * 1024));
@@ -269,7 +262,15 @@ void print_chars(const char* data, size_t size) {
     }
     printf("\n");
 }
-
+// Función para mostrar contenido en formato hexadecimal
+void print_hex(const char* data, size_t size) {
+    for (size_t i = 0; i < size; i++) {
+        printf("%02x ", (unsigned char)data[i]);
+        if ((i + 1) % 16 == 0)
+            printf("\n");
+    }
+    printf("\n");
+}
 // Función para mostrar contenido de dos archivos en la consola en hexadecimal
 void show_files_in_console_hex(const char* file1Content, size_t file1Size, const char* file2Content, size_t file2Size) {
     printf(RED "Archivo Original (Hexadecimal):\n" RESET);
@@ -357,4 +358,93 @@ void change_extension_to_ha(const char *input_filename, char *output_filename1, 
     } else {
         strcat(output_filename3, ".HA3");
     }
+}
+
+int correct_error_and_get_positions(char *data, int block_size, size_t size, int **error_positions) {
+    int parity_bits = get_parity_bit_count(block_size);
+    int data_bits = block_size;
+    block_size = data_bits + parity_bits + 1;
+
+    int block_bytes = (block_size - 1 + 7) / 8;
+
+    *error_positions = (int *)malloc(size * sizeof(int));
+    size_t error_count = 0;
+    for (int i = 0; i < size; i += block_bytes) {
+        int index = 0;
+        int parity = 0;
+        int pos = 0;
+        for (int j = 0; j < block_size - 1; j++) {
+            pos = i * 8 + j;
+            if (get_bit(data, pos)) {
+                index ^= j + 1;
+                parity ^= 1;
+            }
+        }
+        if (get_bit(data, pos + 1)) parity ^= 1;
+        if (index) {
+            if (parity) {
+                index -= 1;
+                (*error_positions)[error_count++] = i + index / 8;
+            } else {
+                free(*error_positions);
+                return 1;
+            }
+        }
+    }
+
+    *error_positions = realloc(*error_positions, error_count * sizeof(int));
+    return error_count;
+}
+
+void show_files_in_console_protected(char *original_content, size_t size, char *compressed_content, size_t compressed_size, int block_size) {
+    int *original_errors = NULL;
+    int *compressed_errors = NULL;
+
+    int original_error_count = correct_error_and_get_positions(original_content, block_size, size, &original_errors);
+    int compressed_error_count = correct_error_and_get_positions(compressed_content, block_size, compressed_size, &compressed_errors);
+
+    printf(GREEN "Archivo Original (Hexadecimal):                    ");
+    printf(RED "Archivo Protegido con errores (Hexadecimal):\n" RESET);
+
+    size_t max_size = size > compressed_size ? size : compressed_size;
+    for (size_t i = 0; i < max_size; i += 16) {
+        for (size_t j = i; j < i + 16 && j < size; j++) {
+            int is_error = 0;
+            for (int k = 0; k < compressed_error_count; k++) {
+                if (compressed_errors[k] == j) {
+                    is_error = 1;
+                    break;
+                }
+            }
+            if (is_error) {
+                printf(GREEN "%02x " RESET, (unsigned char)original_content[j]);
+            } else {
+                printf("%02x ", (unsigned char)original_content[j]);
+            }
+        }
+        if (i + 16 > size) {
+            for (size_t j = 0; j < (i + 16 - size); j++) {
+                printf("   ");
+            }
+        }
+        printf("    ");
+        for (size_t j = i; j < i + 16 && j < compressed_size; j++) {
+            int is_error = 0;
+            for (int k = 0; k < compressed_error_count; k++) {
+                if (compressed_errors[k] == j) {
+                    is_error = 1;
+                    break;
+                }
+            }
+            if (is_error) {
+                printf(RED "%02x " RESET, (unsigned char)compressed_content[j]);
+            } else {
+                printf("%02x ", (unsigned char)compressed_content[j]);
+            }
+        }
+        printf("\n");
+    }
+
+    free(original_errors);
+    free(compressed_errors);
 }
