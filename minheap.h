@@ -3,7 +3,7 @@
 
 // Par caracter,probabilidad
 typedef struct{
-    char c;
+    unsigned char c;
     int freq;
 }huffmanData;
 
