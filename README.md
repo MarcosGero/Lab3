@@ -1,5 +1,7 @@
 # Lab3 - Data Compression and Error Correction
 
+![Program Interface](interface.jpeg)
+
 ## Overview
 
 This project is a C-based implementation of fundamental data processing algorithms. It focuses on data compression using Huffman coding, error detection and correction using Hamming codes, and data structure management using Min-Heaps.
