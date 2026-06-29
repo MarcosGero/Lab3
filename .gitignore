@@ -2,3 +2,17 @@
 .idea
 /cmake-build-debug
 cmake-build-debug
+build.ninja
+cmake_install.cmake
+CMakeCache.txt
+CMakeFiles/4.3.4/CMakeCCompiler.cmake
+CMakeFiles/4.3.4/CMakeDetermineCompilerABI_C.bin
+CMakeFiles/4.3.4/CMakeRCCompiler.cmake
+CMakeFiles/4.3.4/CMakeSystem.cmake
+CMakeFiles/4.3.4/CompilerIdC/a.exe
+CMakeFiles/4.3.4/CompilerIdC/CMakeCCompilerId.c
+CMakeFiles/cmake.check_cache
+CMakeFiles/CMakeConfigureLog.yaml
+CMakeFiles/InstallScripts.json
+CMakeFiles/rules.ninja
+CMakeFiles/TargetDirectories.txt
