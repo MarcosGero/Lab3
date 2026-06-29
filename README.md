@@ -11,17 +11,20 @@ This project is a C-based implementation of fundamental data processing algorith
 The program provides an easy-to-use menu with the following options:
 
 ### Data Compression (Huffman)
+
 - **1. Compress file**: Shrinks a file to make it take up less space.
 - **2. Decompress file**: Restores a shrunken file back to its original form.
 
 ### Error Protection (Hamming)
+
 - **3. Protect file**: Adds special codes to a file so that any accidental changes can be detected and fixed.
 - **4. Introduce one error**: Intentionally damages a file by changing one piece of data, used for testing.
 - **5. Introduce two errors**: Intentionally damages a file by changing two pieces of data, used for testing.
 - **6. Decode file with errors**: Opens a damaged file to see what it looks like with the errors.
-- **7. Decode and correct errors**: Opens a damaged file and uses the special codes to automatically fix the errors.
+- **7. Decode and correct errors**: Opens a damaged file and automatically fix the errors.
 
 ### Statistics and Tools
+
 - **8. Show file contents**: Displays what is inside a file.
 - **9. Compare protected files**: Shows the original file and the damaged file side-by-side to easily spot the differences.
 - **10-12. Compare sizes**: Lets you see the size of the files in different formats (Hexadecimal, Binary, or plain Characters).
